@@ -1,0 +1,61 @@
+/* src/index.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-900 text-slate-100 antialiased;
+  }
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-slate-800;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-600 rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-500;
+  }
+}
+
+@layer components {
+  .schedule-cell {
+    @apply border border-slate-700/50 bg-slate-800/40 min-h-[60px] relative;
+  }
+  .schedule-cell-header {
+    @apply border border-slate-700/50 bg-slate-800/80 text-slate-300 font-medium text-sm py-2 text-center;
+  }
+  .schedule-time-label {
+    @apply text-slate-400 text-xs font-medium text-right pr-2 leading-[60px] select-none;
+  }
+  .course-block {
+    @apply rounded-lg shadow-md transition-all duration-100 hover:shadow-lg hover:scale-[1.01] cursor-pointer overflow-hidden;
+    position: absolute;
+    left: 2px;
+    right: 2px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .course-block-content {
+    @apply px-1.5 py-1 h-full flex flex-col justify-center;
+  }
+  .course-block-name {
+    @apply text-[11px] font-semibold leading-tight truncate;
+  }
+  .course-block-meta {
+    @apply text-[9px] opacity-80 leading-tight truncate flex gap-1;
+  }
+  .sidebar-section {
+    @apply mb-4;
+  }
+  .sidebar-label {
+    @apply text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 block;
+  }
+  .tooltip-bubble {
+    @apply bg-slate-800 text-white text-xs rounded-lg shadow-xl p-3 max-w-xs z-50 pointer-events-none;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+}
