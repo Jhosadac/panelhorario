@@ -10,21 +10,23 @@ function Sidebar() {
     tempSections,
     tempCycle,
     tempFilterType,
-    tempClassroom,
     occupancy,
     dispatch,
   } = useSchedule()
 
   const [isOpen, setIsOpen] = useState(true)
 
-  // Ciclos disponibles según departamentos temporales
+  // Ciclos disponibles según el departamento seleccionado
   const cycles = useMemo(() => {
-    const filtered = courses.filter(c => tempDepartments.includes(c.department))
+    let filtered = courses
+    if (tempDepartments.length > 0) {
+      filtered = filtered.filter(c => tempDepartments.includes(c.department))
+    }
     const unique = new Set(filtered.map(c => c.cycle).filter(Boolean))
     return Array.from(unique).sort()
   }, [courses, tempDepartments])
 
-  // Cursos según departamentos y ciclo temporal
+  // Cursos según departamento y ciclo temporal
   const filteredCourses = useMemo(() => {
     let result = courses
     if (tempDepartments.length > 0) {
@@ -36,37 +38,53 @@ function Sidebar() {
     return result
   }, [courses, tempDepartments, tempCycle])
 
-  // Toggle departamento temporal
-  const toggleDepartment = (dept) => {
-    let newDepts
-    if (tempDepartments.includes(dept)) {
-      newDepts = tempDepartments.filter(d => d !== dept)
-    } else {
-      newDepts = [...tempDepartments, dept]
+  // Actualiza las secciones seleccionadas según los filtros actuales (departamento y ciclo)
+  const updateSectionsForCurrentFilters = (depts, cycle) => {
+    let filtered = courses
+    if (depts.length > 0) {
+      filtered = filtered.filter(c => depts.includes(c.department))
     }
-    dispatch({ type: 'SET_TEMP_DEPARTMENTS', payload: newDepts })
+    if (cycle) {
+      filtered = filtered.filter(c => c.cycle === cycle)
+    }
+    const newSections = { ...tempSections }
+    // Desmarcar cursos que no están en filtered
+    Object.keys(newSections).forEach(courseName => {
+      if (!filtered.some(c => c.name === courseName)) {
+        newSections[courseName] = []
+      }
+    })
+    // Marcar todas las secciones de los cursos que sí están
+    filtered.forEach(course => {
+      const courseSchedules = schedules.filter(s => s.course_name === course.name)
+      const sections = [...new Set(courseSchedules.map(s => s.class).filter(Boolean))]
+      newSections[course.name] = sections
+    })
+    dispatch({ type: 'SET_TEMP_SECTIONS', payload: newSections })
   }
 
-  // Cambio de ciclo temporal
+  // Manejar clic en departamento (exclusivo)
+  const handleDepartmentClick = (dept) => {
+    let newDepts
+    if (tempDepartments.includes(dept) && tempDepartments.length === 1) {
+      // Si es el único seleccionado, lo deseleccionamos (vacío)
+      newDepts = []
+    } else {
+      // Seleccionamos solo este
+      newDepts = [dept]
+    }
+    dispatch({ type: 'SET_TEMP_DEPARTMENTS', payload: newDepts })
+    updateSectionsForCurrentFilters(newDepts, tempCycle)
+  }
+
+  // Cambio de ciclo
   const handleCycleChange = (e) => {
     const cycle = e.target.value
     dispatch({ type: 'SET_TEMP_CYCLE', payload: cycle })
-    if (cycle) {
-      // Seleccionar todas las secciones de los cursos de ese ciclo (y departamentos activos)
-      const coursesInCycle = courses.filter(c => 
-        c.cycle === cycle && tempDepartments.includes(c.department)
-      )
-      const newSections = { ...tempSections }
-      coursesInCycle.forEach(c => {
-        const courseSchedules = schedules.filter(s => s.course_name === c.name)
-        const sections = [...new Set(courseSchedules.map(s => s.class).filter(Boolean))]
-        newSections[c.name] = sections
-      })
-      dispatch({ type: 'SET_TEMP_SECTIONS', payload: newSections })
-    }
+    updateSectionsForCurrentFilters(tempDepartments, cycle)
   }
 
-  // Toggle todas las secciones de un curso (temporal)
+  // Toggle todas las secciones de un curso
   const toggleCourse = (courseName) => {
     const courseSchedules = schedules.filter(s => s.course_name === courseName)
     const sections = [...new Set(courseSchedules.map(s => s.class).filter(Boolean))]
@@ -83,7 +101,7 @@ function Sidebar() {
     })
   }
 
-  // Toggle una sección específica (temporal)
+  // Toggle una sección específica
   const toggleSection = (courseName, section) => {
     const current = tempSections[courseName] || []
     let newSections
@@ -103,7 +121,6 @@ function Sidebar() {
     dispatch({ type: 'APPLY_FILTERS' })
   }
 
-  // Obtener color para un curso (para el indicador)
   const getColor = (courseId) => {
     let hash = 0
     for (let i = 0; i < courseId.length; i++) {
@@ -112,7 +129,6 @@ function Sidebar() {
     return COLORS[Math.abs(hash) % COLORS.length]
   }
 
-  // Contar secciones seleccionadas (temporales)
   const selectedCount = useMemo(() => {
     let count = 0
     Object.entries(tempSections).forEach(([courseName, sections]) => {
@@ -138,14 +154,14 @@ function Sidebar() {
         shadow-lg
       `}>
         <div className="flex-1 overflow-y-auto p-4 space-y-5">
-          {/* Filtro por Departamento */}
+          {/* Escuela */}
           <div className="sidebar-section">
             <label className="sidebar-label">🏫 Escuela</label>
             <div className="flex gap-2">
               {['EPIES', 'EPIEC'].map(dept => (
                 <button
                   key={dept}
-                  onClick={() => toggleDepartment(dept)}
+                  onClick={() => handleDepartmentClick(dept)}
                   className={`
                     flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition border
                     ${tempDepartments.includes(dept)
@@ -157,9 +173,12 @@ function Sidebar() {
                 </button>
               ))}
             </div>
+            {tempDepartments.length === 0 && (
+              <div className="text-xs text-[#F2545B] mt-1">Ninguna escuela seleccionada</div>
+            )}
           </div>
 
-          {/* Filtro por ciclo */}
+          {/* Ciclo */}
           <div className="sidebar-section">
             <label className="sidebar-label">📋 Ciclo</label>
             <select
@@ -174,7 +193,7 @@ function Sidebar() {
             </select>
           </div>
 
-          {/* Lista de cursos con secciones */}
+          {/* Cursos y secciones */}
           <div className="sidebar-section">
             <div className="flex items-center justify-between mb-2">
               <label className="sidebar-label mb-0">📚 Cursos y secciones</label>
@@ -234,7 +253,7 @@ function Sidebar() {
             </div>
           </div>
 
-          {/* Filtro por tipo de BH */}
+          {/* Tipo de BH */}
           <div className="sidebar-section">
             <label className="sidebar-label">🎯 Tipo de BH</label>
             <div className="flex gap-2">
@@ -253,21 +272,6 @@ function Sidebar() {
                 </button>
               ))}
             </div>
-          </div>
-
-          {/* Filtro por aula */}
-          <div className="sidebar-section">
-            <label className="sidebar-label">🏫 Aula</label>
-            <select
-              value={tempClassroom}
-              onChange={(e) => dispatch({ type: 'SET_TEMP_CLASSROOM', payload: e.target.value })}
-              className="w-full bg-white border border-[#E0E0E0] rounded-lg px-3 py-2 text-sm text-[#333333] focus:outline-none focus:ring-2 focus:ring-[#6B1F1F] transition"
-            >
-              <option value="">Todas las aulas</option>
-              {[...new Set(schedules.map(s => s.classroom).filter(Boolean))].map(classroom => (
-                <option key={classroom} value={classroom}>{classroom}</option>
-              ))}
-            </select>
           </div>
 
           {/* Botón Aplicar */}
@@ -311,7 +315,10 @@ function Sidebar() {
               <span className="font-medium text-[#333333]">Secciones seleccionadas:</span> {selectedCount}
             </div>
             <div className="text-xs text-[#9E9E9E] mt-1">
-              <span className="font-medium text-[#333333]">Filtros activos:</span> {tempDepartments.join(', ') || 'Ninguno'}
+              <span className="font-medium text-[#333333]">Escuela:</span> {tempDepartments.join(', ') || 'Ninguna'}
+            </div>
+            <div className="text-xs text-[#9E9E9E]">
+              <span className="font-medium text-[#333333]">Ciclo:</span> {tempCycle || 'Todos'}
             </div>
           </div>
         </div>
