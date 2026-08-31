@@ -1,4 +1,3 @@
-// src/App.jsx
 import React from 'react'
 import { ScheduleProvider } from './context/ScheduleContext'
 import Sidebar from './components/Sidebar'
