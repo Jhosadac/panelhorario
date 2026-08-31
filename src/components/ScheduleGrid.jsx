@@ -145,8 +145,9 @@ function ScheduleGrid() {
           ))}
         </div>
 
-        {/* Cuerpo */}
+        {/* Cuerpo de la cuadrícula */}
         <div className="relative">
+          {/* Filas de horas y celdas (solo para el fondo) */}
           {HOURS.map(hour => (
             <div key={hour} className="grid grid-cols-[60px_repeat(7,1fr)]">
               <div className="schedule-cell border-l-0 bg-[#E8DFB5]/10 flex items-center justify-end pr-2">
@@ -163,62 +164,75 @@ function ScheduleGrid() {
             </div>
           ))}
 
-          {/* Bloques */}
-          {DAYS.map(day => {
+          {/* Contenedores por día para los bloques */}
+          {DAYS.map((day, dayIndex) => {
             const groups = groupedByDay[day] || []
-            return groups.map((group, groupIdx) => (
-              group.map((schedule, blockIdx) => {
-                const course = findCourse(schedule.course_name)
-                if (!course) return null
+            if (groups.length === 0) return null
 
-                const pos = getPositionAndHeight(
-                  schedule.start_time,
-                  schedule.end_time,
-                  HOUR_START,
-                  rowHeight
-                )
-                const count = group.length
-                const width = count === 1 ? '100%' : `${100 / count}%`
-                const left = count === 1 ? '0%' : `${blockIdx * (100 / count)}%`
-                const color = getBgColor(course.name)
-                const textColor = getTextColor(color)
+            return (
+              <div
+                key={`day-container-${day}`}
+                className="absolute top-0 h-full pointer-events-none"
+                style={{
+                  left: `calc(60px + (${dayIndex} * (100% - 60px) / 7))`,
+                  width: `calc((100% - 60px) / 7)`,
+                }}
+              >
+                {groups.map((group) =>
+                  group.map((schedule, blockIdx) => {
+                    const course = findCourse(schedule.course_name)
+                    if (!course) return null
 
-                const shortName = course.name.length > 20
-                  ? course.name.substring(0, 18) + '…'
-                  : course.name
+                    const pos = getPositionAndHeight(
+                      schedule.start_time,
+                      schedule.end_time,
+                      HOUR_START,
+                      rowHeight
+                    )
+                    const count = group.length
+                    const width = count === 1 ? '100%' : `${100 / count}%`
+                    const left = count === 1 ? '0%' : `${blockIdx * (100 / count)}%`
+                    const color = getBgColor(course.name)
+                    const textColor = getTextColor(color)
 
-                return (
-                  <div
-                    key={`${schedule.id}-${day}`}
-                    className="course-block"
-                    style={{
-                      top: pos.top,
-                      height: pos.height,
-                      left: `calc(${left} + 2px)`,
-                      width: `calc(${width} - 4px)`,
-                      backgroundColor: color,
-                      color: textColor,
-                      boxShadow: `0 2px 8px ${color}40`,
-                      borderColor: `${color}60`,
-                      zIndex: blockIdx + 1,
-                    }}
-                    onMouseEnter={(e) => showTooltip(schedule, e)}
-                    onMouseLeave={hideTooltip}
-                  >
-                    <div className="course-block-content">
-                      <div className="course-block-name">{shortName}</div>
-                      <div className="course-block-meta">
-                        <span>{schedule.category || ''}</span>
-                        {schedule.category && schedule.class && '·'}
-                        <span>{schedule.class || ''}</span>
-                        {schedule.class && schedule.classroom && '·'}
-                        <span className="truncate">{schedule.classroom || ''}</span>
+                    const shortName = course.name.length > 20
+                      ? course.name.substring(0, 18) + '…'
+                      : course.name
+
+                    return (
+                      <div
+                        key={`${schedule.id}-${day}`}
+                        className="course-block pointer-events-auto"
+                        style={{
+                          top: pos.top,
+                          height: pos.height,
+                          left: `calc(${left} + 2px)`,
+                          width: `calc(${width} - 4px)`,
+                          backgroundColor: color,
+                          color: textColor,
+                          boxShadow: `0 2px 8px ${color}40`,
+                          borderColor: `${color}60`,
+                          zIndex: blockIdx + 1,
+                        }}
+                        onMouseEnter={(e) => showTooltip(schedule, e)}
+                        onMouseLeave={hideTooltip}
+                      >
+                        <div className="course-block-content">
+                          <div className="course-block-name">{shortName}</div>
+                          <div className="course-block-meta">
+                            <span>{schedule.category || ''}</span>
+                            {schedule.category && schedule.class && '·'}
+                            <span>{schedule.class || ''}</span>
+                            {schedule.class && schedule.classroom && '·'}
+                            <span className="truncate">{schedule.classroom || ''}</span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                )
-              })
-            ))
+                    )
+                  })
+                )}
+              </div>
+            )
           })}
         </div>
       </div>
