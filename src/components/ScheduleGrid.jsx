@@ -7,17 +7,13 @@ function ScheduleGrid() {
   const {
     schedules,
     courses,
-    activeDepartments,
     activeSections,
-    activeCycle,
     activeFilterType,
-    activeClassroom,
     loading,
   } = useSchedule()
 
   const [tooltip, setTooltip] = useState(null)
 
-  // Obtener nombres de cursos activos (basado en secciones activas)
   const activeCourseNames = useMemo(() => {
     const names = new Set()
     Object.entries(activeSections).forEach(([courseName, sections]) => {
@@ -26,30 +22,19 @@ function ScheduleGrid() {
     return names
   }, [activeSections])
 
-  // Filtrar horarios según filtros activos
   const filteredSchedules = useMemo(() => {
     return schedules.filter(s => {
-      // 1. Curso debe estar en los seleccionados
       if (!activeCourseNames.has(s.course_name)) return false
-
-      // 2. Sección
       const courseSections = activeSections[s.course_name] || []
       if (!courseSections.includes(s.class)) return false
-
-      // 3. Tipo
       if (activeFilterType !== 'all') {
         const typeLower = s.category?.toLowerCase() || ''
         if (typeLower !== activeFilterType) return false
       }
-
-      // 4. Aula
-      if (activeClassroom && s.classroom !== activeClassroom) return false
-
       return true
     })
-  }, [schedules, activeCourseNames, activeSections, activeFilterType, activeClassroom])
+  }, [schedules, activeCourseNames, activeSections, activeFilterType])
 
-  // Agrupar por día y manejar solapamientos
   const groupedByDay = useMemo(() => {
     const result = {}
     DAYS.forEach(day => {
@@ -178,7 +163,7 @@ function ScheduleGrid() {
             </div>
           ))}
 
-          {/* Bloques de horarios */}
+          {/* Bloques */}
           {DAYS.map(day => {
             const groups = groupedByDay[day] || []
             return groups.map((group, groupIdx) => (
