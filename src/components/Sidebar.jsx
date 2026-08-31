@@ -6,95 +6,86 @@ function Sidebar() {
   const {
     courses,
     schedules,
-    selectedDepartments,
-    selectedSections,
-    selectedCycle,
-    filterType,
-    selectedClassroom,
-    selectedGlobalSection,
+    tempDepartments,
+    tempSections,
+    tempCycle,
+    tempFilterType,
+    tempClassroom,
     occupancy,
     dispatch,
   } = useSchedule()
 
   const [isOpen, setIsOpen] = useState(true)
 
-  // Obtener ciclos únicos de los cursos (considerando departamentos seleccionados)
+  // Ciclos disponibles según departamentos temporales
   const cycles = useMemo(() => {
-    const filtered = courses.filter(c => selectedDepartments.includes(c.department))
+    const filtered = courses.filter(c => tempDepartments.includes(c.department))
     const unique = new Set(filtered.map(c => c.cycle).filter(Boolean))
     return Array.from(unique).sort()
-  }, [courses, selectedDepartments])
+  }, [courses, tempDepartments])
 
-  // Obtener cursos según departamentos y ciclo seleccionado
+  // Cursos según departamentos y ciclo temporal
   const filteredCourses = useMemo(() => {
     let result = courses
-    if (selectedDepartments.length > 0) {
-      result = result.filter(c => selectedDepartments.includes(c.department))
+    if (tempDepartments.length > 0) {
+      result = result.filter(c => tempDepartments.includes(c.department))
     }
-    if (selectedCycle) {
-      result = result.filter(c => c.cycle === selectedCycle)
+    if (tempCycle) {
+      result = result.filter(c => c.cycle === tempCycle)
     }
     return result
-  }, [courses, selectedDepartments, selectedCycle])
+  }, [courses, tempDepartments, tempCycle])
 
-  // Obtener todas las secciones únicas globales (para filtro global)
-  const allSections = useMemo(() => {
-    const secs = new Set()
-    schedules.forEach(s => { if (s.class) secs.add(s.class) })
-    return Array.from(secs).sort()
-  }, [schedules])
-
-  // Manejar selección de departamento (toggle)
+  // Toggle departamento temporal
   const toggleDepartment = (dept) => {
     let newDepts
-    if (selectedDepartments.includes(dept)) {
-      newDepts = selectedDepartments.filter(d => d !== dept)
+    if (tempDepartments.includes(dept)) {
+      newDepts = tempDepartments.filter(d => d !== dept)
     } else {
-      newDepts = [...selectedDepartments, dept]
+      newDepts = [...tempDepartments, dept]
     }
-    dispatch({ type: 'SET_SELECTED_DEPARTMENTS', payload: newDepts })
+    dispatch({ type: 'SET_TEMP_DEPARTMENTS', payload: newDepts })
   }
 
-  // Manejar selección de ciclo
+  // Cambio de ciclo temporal
   const handleCycleChange = (e) => {
     const cycle = e.target.value
-    dispatch({ type: 'SET_SELECTED_CYCLE', payload: cycle })
+    dispatch({ type: 'SET_TEMP_CYCLE', payload: cycle })
     if (cycle) {
       // Seleccionar todas las secciones de los cursos de ese ciclo (y departamentos activos)
       const coursesInCycle = courses.filter(c => 
-        c.cycle === cycle && selectedDepartments.includes(c.department)
+        c.cycle === cycle && tempDepartments.includes(c.department)
       )
-      const newSections = { ...selectedSections }
+      const newSections = { ...tempSections }
       coursesInCycle.forEach(c => {
         const courseSchedules = schedules.filter(s => s.course_name === c.name)
         const sections = [...new Set(courseSchedules.map(s => s.class).filter(Boolean))]
         newSections[c.name] = sections
       })
-      dispatch({ type: 'SET_SELECTED_SECTIONS', payload: newSections })
+      dispatch({ type: 'SET_TEMP_SECTIONS', payload: newSections })
     }
   }
 
-  // Toggle selección de todas las secciones de un curso
+  // Toggle todas las secciones de un curso (temporal)
   const toggleCourse = (courseName) => {
     const courseSchedules = schedules.filter(s => s.course_name === courseName)
     const sections = [...new Set(courseSchedules.map(s => s.class).filter(Boolean))]
-    const current = selectedSections[courseName] || []
+    const current = tempSections[courseName] || []
     let newSelected
     if (current.length === sections.length && sections.length > 0) {
-      // Ya están todas seleccionadas, las deseleccionamos
       newSelected = []
     } else {
       newSelected = sections
     }
     dispatch({
-      type: 'SET_SELECTED_SECTIONS',
-      payload: { ...selectedSections, [courseName]: newSelected }
+      type: 'SET_TEMP_SECTIONS',
+      payload: { ...tempSections, [courseName]: newSelected }
     })
   }
 
-  // Toggle de una sección específica
+  // Toggle una sección específica (temporal)
   const toggleSection = (courseName, section) => {
-    const current = selectedSections[courseName] || []
+    const current = tempSections[courseName] || []
     let newSections
     if (current.includes(section)) {
       newSections = current.filter(s => s !== section)
@@ -102,12 +93,17 @@ function Sidebar() {
       newSections = [...current, section]
     }
     dispatch({
-      type: 'SET_SELECTED_SECTIONS',
-      payload: { ...selectedSections, [courseName]: newSections }
+      type: 'SET_TEMP_SECTIONS',
+      payload: { ...tempSections, [courseName]: newSections }
     })
   }
 
-  // Obtener color para un curso
+  // Aplicar filtros
+  const applyFilters = () => {
+    dispatch({ type: 'APPLY_FILTERS' })
+  }
+
+  // Obtener color para un curso (para el indicador)
   const getColor = (courseId) => {
     let hash = 0
     for (let i = 0; i < courseId.length; i++) {
@@ -116,29 +112,30 @@ function Sidebar() {
     return COLORS[Math.abs(hash) % COLORS.length]
   }
 
-  // Contar horarios seleccionados (para resumen)
+  // Contar secciones seleccionadas (temporales)
   const selectedCount = useMemo(() => {
     let count = 0
-    Object.entries(selectedSections).forEach(([courseName, sections]) => {
+    Object.entries(tempSections).forEach(([courseName, sections]) => {
       count += sections.length
     })
     return count
-  }, [selectedSections])
+  }, [tempSections])
 
   return (
     <>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 bg-slate-800 p-2 rounded-lg shadow-lg border border-slate-700"
+        className="lg:hidden fixed top-4 left-4 z-50 bg-[#6B1F1F] text-white p-2 rounded-lg shadow-lg"
       >
         {isOpen ? '✕' : '☰'}
       </button>
 
       <aside className={`
-        w-80 bg-slate-900/95 border-r border-slate-700/50 flex flex-col shrink-0
+        w-80 bg-white border-r border-[#E0E0E0] flex flex-col shrink-0
         transition-all duration-300 ease-in-out overflow-hidden
         ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         fixed lg:relative z-40 h-full
+        shadow-lg
       `}>
         <div className="flex-1 overflow-y-auto p-4 space-y-5">
           {/* Filtro por Departamento */}
@@ -150,10 +147,10 @@ function Sidebar() {
                   key={dept}
                   onClick={() => toggleDepartment(dept)}
                   className={`
-                    flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition
-                    ${selectedDepartments.includes(dept)
-                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25'
-                      : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}
+                    flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition border
+                    ${tempDepartments.includes(dept)
+                      ? 'bg-[#6B1F1F] text-white border-[#6B1F1F]'
+                      : 'bg-white text-[#6B1F1F] border-[#6B1F1F] hover:bg-[#F2545B] hover:text-white'}
                   `}
                 >
                   {dept}
@@ -166,9 +163,9 @@ function Sidebar() {
           <div className="sidebar-section">
             <label className="sidebar-label">📋 Ciclo</label>
             <select
-              value={selectedCycle}
+              value={tempCycle}
               onChange={handleCycleChange}
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition"
+              className="w-full bg-white border border-[#E0E0E0] rounded-lg px-3 py-2 text-sm text-[#333333] focus:outline-none focus:ring-2 focus:ring-[#6B1F1F] transition"
             >
               <option value="">Todos los ciclos</option>
               {cycles.map(cycle => (
@@ -181,33 +178,33 @@ function Sidebar() {
           <div className="sidebar-section">
             <div className="flex items-center justify-between mb-2">
               <label className="sidebar-label mb-0">📚 Cursos y secciones</label>
-              <span className="text-xs text-slate-500">{selectedCount} secciones seleccionadas</span>
+              <span className="text-xs text-[#9E9E9E]">{selectedCount} secciones</span>
             </div>
             <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
               {filteredCourses.map(course => {
                 const courseSchedules = schedules.filter(s => s.course_name === course.name)
                 const sections = [...new Set(courseSchedules.map(s => s.class).filter(Boolean))]
-                const selected = selectedSections[course.name] || []
+                const selected = tempSections[course.name] || []
                 const allSelected = sections.length > 0 && selected.length === sections.length
                 const color = getColor(course.id)
 
                 return (
-                  <div key={course.id} className="bg-slate-800/40 rounded-lg p-2 border border-slate-700/30">
+                  <div key={course.id} className="bg-[#E8DFB5]/30 rounded-lg p-2 border border-[#E0E0E0]">
                     <div className="flex items-center gap-2">
                       <input
                         type="checkbox"
                         checked={allSelected}
                         onChange={() => toggleCourse(course.name)}
-                        className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-blue-500/50 cursor-pointer"
+                        className="w-4 h-4 rounded border-[#9E9E9E] text-[#6B1F1F] focus:ring-[#6B1F1F] cursor-pointer"
                       />
                       <span
                         className="w-2.5 h-2.5 rounded-full shrink-0"
                         style={{ backgroundColor: color }}
                       />
-                      <span className="text-sm text-slate-300 truncate flex-1">
+                      <span className="text-sm text-[#333333] truncate flex-1">
                         {course.code} - {course.name}
                       </span>
-                      <span className="text-[10px] text-slate-500 font-mono">
+                      <span className="text-[10px] text-[#9E9E9E] font-mono">
                         {sections.length}
                       </span>
                     </div>
@@ -219,9 +216,9 @@ function Sidebar() {
                               type="checkbox"
                               checked={selected.includes(sec)}
                               onChange={() => toggleSection(course.name, sec)}
-                              className="w-3 h-3 rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-blue-500/50 cursor-pointer"
+                              className="w-3 h-3 rounded border-[#9E9E9E] text-[#6B1F1F] focus:ring-[#6B1F1F] cursor-pointer"
                             />
-                            <span className="text-slate-400">{sec}</span>
+                            <span className="text-[#333333]">{sec}</span>
                           </label>
                         ))}
                       </div>
@@ -230,7 +227,7 @@ function Sidebar() {
                 )
               })}
               {filteredCourses.length === 0 && (
-                <div className="text-sm text-slate-500 text-center py-4">
+                <div className="text-sm text-[#9E9E9E] text-center py-4">
                   No hay cursos con los filtros actuales
                 </div>
               )}
@@ -244,12 +241,12 @@ function Sidebar() {
               {['all', 'teoria', 'practica'].map(type => (
                 <button
                   key={type}
-                  onClick={() => dispatch({ type: 'SET_FILTER_TYPE', payload: type })}
+                  onClick={() => dispatch({ type: 'SET_TEMP_FILTER_TYPE', payload: type })}
                   className={`
-                    flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition capitalize
-                    ${filterType === type
-                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25'
-                      : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}
+                    flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition capitalize border
+                    ${tempFilterType === type
+                      ? 'bg-[#6B1F1F] text-white border-[#6B1F1F]'
+                      : 'bg-white text-[#6B1F1F] border-[#6B1F1F] hover:bg-[#F2545B] hover:text-white'}
                   `}
                 >
                   {type === 'all' ? 'Todos' : type === 'teoria' ? 'Teoría' : 'Práctica'}
@@ -262,9 +259,9 @@ function Sidebar() {
           <div className="sidebar-section">
             <label className="sidebar-label">🏫 Aula</label>
             <select
-              value={selectedClassroom}
-              onChange={(e) => dispatch({ type: 'SET_SELECTED_CLASSROOM', payload: e.target.value })}
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition"
+              value={tempClassroom}
+              onChange={(e) => dispatch({ type: 'SET_TEMP_CLASSROOM', payload: e.target.value })}
+              className="w-full bg-white border border-[#E0E0E0] rounded-lg px-3 py-2 text-sm text-[#333333] focus:outline-none focus:ring-2 focus:ring-[#6B1F1F] transition"
             >
               <option value="">Todas las aulas</option>
               {[...new Set(schedules.map(s => s.classroom).filter(Boolean))].map(classroom => (
@@ -273,55 +270,53 @@ function Sidebar() {
             </select>
           </div>
 
-          {/* Filtro global por sección */}
+          {/* Botón Aplicar */}
           <div className="sidebar-section">
-            <label className="sidebar-label">🔤 Sección (global)</label>
-            <select
-              value={selectedGlobalSection}
-              onChange={(e) => dispatch({ type: 'SET_SELECTED_GLOBAL_SECTION', payload: e.target.value })}
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition"
+            <button
+              onClick={applyFilters}
+              className="w-full btn-primary text-center"
             >
-              <option value="">Todas las secciones</option>
-              {allSections.map(sec => (
-                <option key={sec} value={sec}>{sec}</option>
-              ))}
-            </select>
+              ✅ Aplicar filtros
+            </button>
           </div>
 
           {/* Ocupación de aulas */}
           <div className="sidebar-section">
             <label className="sidebar-label flex items-center gap-2">
               🟢 Ocupación de aulas
-              <span className="text-[10px] text-slate-500 font-normal">(en tiempo real)</span>
+              <span className="text-[10px] text-[#9E9E9E] font-normal">(en tiempo real)</span>
             </label>
             <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
               {occupancy.map(classroom => (
                 <div
                   key={classroom.id}
-                  className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-slate-800/50 border border-slate-700/30"
+                  className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-[#E8DFB5]/30 border border-[#E0E0E0]"
                 >
-                  <span className="text-sm text-slate-300">{classroom.name}</span>
-                  <span className={`text-xs font-medium flex items-center gap-1.5 ${classroom.occupied ? 'text-red-400' : 'text-green-400'}`}>
+                  <span className="text-sm text-[#333333]">{classroom.name}</span>
+                  <span className={`text-xs font-medium flex items-center gap-1.5 ${classroom.occupied ? 'text-[#F2545B]' : 'text-[#4CAF50]'}`}>
                     <span className="text-base">{classroom.occupied ? '🔴' : '🟢'}</span>
                     {classroom.occupied ? 'Ocupado' : 'Libre'}
                   </span>
                 </div>
               ))}
               {occupancy.length === 0 && (
-                <div className="text-sm text-slate-500 text-center py-2">No hay aulas</div>
+                <div className="text-sm text-[#9E9E9E] text-center py-2">No hay aulas</div>
               )}
             </div>
           </div>
 
           {/* Resumen */}
-          <div className="border-t border-slate-700/50 pt-4 mt-2">
-            <div className="text-xs text-slate-500">
-              <span className="font-medium text-slate-400">Secciones seleccionadas:</span> {selectedCount}
+          <div className="border-t border-[#E0E0E0] pt-4 mt-2">
+            <div className="text-xs text-[#9E9E9E]">
+              <span className="font-medium text-[#333333]">Secciones seleccionadas:</span> {selectedCount}
+            </div>
+            <div className="text-xs text-[#9E9E9E] mt-1">
+              <span className="font-medium text-[#333333]">Filtros activos:</span> {tempDepartments.join(', ') || 'Ninguno'}
             </div>
           </div>
         </div>
 
-        <div className="border-t border-slate-700/50 p-3 text-center text-[10px] text-slate-500">
+        <div className="border-t border-[#E0E0E0] p-3 text-center text-[10px] text-[#9E9E9E]">
           v2.0 · Datos actualizados
         </div>
       </aside>
