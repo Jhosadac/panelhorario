@@ -8,19 +8,17 @@ const initialState = {
   classrooms: [],
   schedules: [],
 
-  // Filtros temporales (lo que el usuario ve en la UI)
-  tempDepartments: [],
-  tempSections: {},        // { 'courseName': ['A', 'B'] }
-  tempCycle: '',
-  tempFilterType: 'all',
-  tempClassroom: '',
+  // Filtros temporales (UI)
+  tempDepartments: [],        // Ahora es exclusivo (un solo elemento o vacío)
+  tempSections: {},          // { 'courseName': ['A', 'B'] }
+  tempCycle: '',             // string, vacío = todos
+  tempFilterType: 'all',     // 'all', 'teoria', 'practica'
 
-  // Filtros activos (los que realmente se aplican a la cuadrícula)
+  // Filtros activos (aplicados)
   activeDepartments: [],
   activeSections: {},
   activeCycle: '',
   activeFilterType: 'all',
-  activeClassroom: '',
 
   loading: false,
   error: null,
@@ -44,7 +42,6 @@ function scheduleReducer(state, action) {
     case 'SET_OCCUPANCY':
       return { ...state, occupancy: action.payload }
 
-    // Filtros temporales
     case 'SET_TEMP_DEPARTMENTS':
       return { ...state, tempDepartments: action.payload }
     case 'SET_TEMP_SECTIONS':
@@ -53,10 +50,7 @@ function scheduleReducer(state, action) {
       return { ...state, tempCycle: action.payload }
     case 'SET_TEMP_FILTER_TYPE':
       return { ...state, tempFilterType: action.payload }
-    case 'SET_TEMP_CLASSROOM':
-      return { ...state, tempClassroom: action.payload }
 
-    // Aplicar filtros (copiar temporales a activos)
     case 'APPLY_FILTERS':
       return {
         ...state,
@@ -64,7 +58,6 @@ function scheduleReducer(state, action) {
         activeSections: state.tempSections,
         activeCycle: state.tempCycle,
         activeFilterType: state.tempFilterType,
-        activeClassroom: state.tempClassroom,
       }
 
     default:
@@ -112,20 +105,16 @@ export function ScheduleProvider({ children }) {
         payload: { courses, teachers, classrooms, schedules }
       })
 
-      // Inicializar secciones temporales: todas las secciones de cada curso
+      // Inicializar: seleccionar todos los departamentos y todas las secciones
+      const allDepts = [...new Set(courses.map(c => c.department).filter(Boolean))]
       const initialSections = {}
       courses.forEach(course => {
         const courseSchedules = schedules.filter(s => s.course_name === course.name)
         const sections = [...new Set(courseSchedules.map(s => s.class).filter(Boolean))]
         initialSections[course.name] = sections
       })
+      dispatch({ type: 'SET_TEMP_DEPARTMENTS', payload: allDepts })
       dispatch({ type: 'SET_TEMP_SECTIONS', payload: initialSections })
-
-      // Departamentos temporales: todos
-      const depts = [...new Set(courses.map(c => c.department).filter(Boolean))]
-      dispatch({ type: 'SET_TEMP_DEPARTMENTS', payload: depts })
-
-      // Aplicar filtros por defecto (para que se vea algo)
       dispatch({ type: 'APPLY_FILTERS' })
 
       await updateOccupancy(classrooms, schedules)
