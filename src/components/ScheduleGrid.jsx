@@ -7,58 +7,54 @@ function ScheduleGrid() {
   const {
     schedules,
     courses,
-    selectedSections,
-    filterType,
-    selectedClassroom,
-    selectedGlobalSection,
+    activeDepartments,
+    activeSections,
+    activeCycle,
+    activeFilterType,
+    activeClassroom,
     loading,
   } = useSchedule()
 
   const [tooltip, setTooltip] = useState(null)
 
-  // Obtener lista de nombres de cursos seleccionados (basado en secciones)
-  const selectedCourseNames = useMemo(() => {
+  // Obtener nombres de cursos activos (basado en secciones activas)
+  const activeCourseNames = useMemo(() => {
     const names = new Set()
-    Object.entries(selectedSections).forEach(([courseName, sections]) => {
+    Object.entries(activeSections).forEach(([courseName, sections]) => {
       if (sections.length > 0) names.add(courseName)
     })
     return names
-  }, [selectedSections])
+  }, [activeSections])
 
-  // Filtrar horarios según todos los criterios
+  // Filtrar horarios según filtros activos
   const filteredSchedules = useMemo(() => {
     return schedules.filter(s => {
-      // 1. Curso debe estar en los seleccionados (por nombre)
-      if (!selectedCourseNames.has(s.course_name)) return false
+      // 1. Curso debe estar en los seleccionados
+      if (!activeCourseNames.has(s.course_name)) return false
 
-      // 2. Sección: debe estar en las secciones seleccionadas para ese curso
-      const courseSections = selectedSections[s.course_name] || []
+      // 2. Sección
+      const courseSections = activeSections[s.course_name] || []
       if (!courseSections.includes(s.class)) return false
 
       // 3. Tipo
-      if (filterType !== 'all') {
+      if (activeFilterType !== 'all') {
         const typeLower = s.category?.toLowerCase() || ''
-        if (typeLower !== filterType) return false
+        if (typeLower !== activeFilterType) return false
       }
 
       // 4. Aula
-      if (selectedClassroom && s.classroom !== selectedClassroom) return false
-
-      // 5. Sección global
-      if (selectedGlobalSection && s.class !== selectedGlobalSection) return false
+      if (activeClassroom && s.classroom !== activeClassroom) return false
 
       return true
     })
-  }, [schedules, selectedCourseNames, selectedSections, filterType, selectedClassroom, selectedGlobalSection])
+  }, [schedules, activeCourseNames, activeSections, activeFilterType, activeClassroom])
 
   // Agrupar por día y manejar solapamientos
   const groupedByDay = useMemo(() => {
     const result = {}
     DAYS.forEach(day => {
       const daySchedules = filteredSchedules.filter(s => s.day_of_week === day)
-      // Ordenar por hora de inicio
       const sorted = [...daySchedules].sort((a, b) => a.start_time.localeCompare(b.start_time))
-      // Agrupar superposiciones
       const groups = []
       for (const s of sorted) {
         let placed = false
@@ -81,10 +77,8 @@ function ScheduleGrid() {
     return result
   }, [filteredSchedules])
 
-  // Encontrar curso por nombre
   const findCourse = (name) => courses.find(c => c.name === name)
 
-  // Tooltip handlers
   const showTooltip = (schedule, event) => {
     const course = findCourse(schedule.course_name)
     if (!course) return
@@ -123,7 +117,7 @@ function ScheduleGrid() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-slate-400 text-center">
+        <div className="text-[#9E9E9E] text-center">
           <div className="text-3xl mb-3">⏳</div>
           <p>Cargando horarios...</p>
         </div>
@@ -134,11 +128,11 @@ function ScheduleGrid() {
   if (filteredSchedules.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-slate-400 text-center max-w-md">
+        <div className="text-[#9E9E9E] text-center max-w-md">
           <div className="text-3xl mb-3">📭</div>
           <p className="text-lg font-medium">No hay horarios para mostrar</p>
-          <p className="text-sm text-slate-500 mt-1">
-            Selecciona cursos y secciones en el panel lateral.
+          <p className="text-sm mt-1">
+            Selecciona cursos y secciones, luego presiona <strong>"Aplicar"</strong>.
           </p>
         </div>
       </div>
@@ -150,16 +144,16 @@ function ScheduleGrid() {
       <div className="min-w-[800px]">
         {/* Encabezados */}
         <div className="grid grid-cols-[60px_repeat(7,1fr)] sticky top-0 z-10">
-          <div className="schedule-cell-header bg-slate-800/95 backdrop-blur-sm rounded-tl-lg border-b-0">
-            <span className="text-xs text-slate-500">Hora</span>
+          <div className="schedule-cell-header bg-[#6B1F1F] rounded-tl-lg border-b-0">
+            <span className="text-xs text-white">Hora</span>
           </div>
           {DAYS.map(day => (
             <div
               key={day}
-              className={`schedule-cell-header bg-slate-800/95 backdrop-blur-sm border-b-0 ${isToday(day) ? 'ring-1 ring-blue-500/30' : ''}`}
+              className={`schedule-cell-header bg-[#6B1F1F] border-b-0 ${isToday(day) ? 'ring-2 ring-[#F2545B]' : ''}`}
             >
               <div className="font-medium">{day}</div>
-              <div className="text-[10px] text-slate-500 font-normal">
+              <div className="text-[10px] text-[#E8DFB5] font-normal">
                 {isToday(day) && '🟢 Hoy'}
               </div>
             </div>
@@ -170,15 +164,15 @@ function ScheduleGrid() {
         <div className="relative">
           {HOURS.map(hour => (
             <div key={hour} className="grid grid-cols-[60px_repeat(7,1fr)]">
-              <div className="schedule-cell border-l-0 bg-slate-800/20 flex items-center justify-end pr-2">
-                <span className="text-xs text-slate-500 font-mono">
+              <div className="schedule-cell border-l-0 bg-[#E8DFB5]/10 flex items-center justify-end pr-2">
+                <span className="text-xs text-[#9E9E9E] font-mono">
                   {String(hour).padStart(2, '0')}:00
                 </span>
               </div>
               {DAYS.map(day => (
                 <div
                   key={`${day}-${hour}`}
-                  className={`schedule-cell ${isToday(day) ? 'bg-slate-700/20 ring-1 ring-blue-500/10' : ''}`}
+                  className={`schedule-cell ${isToday(day) ? 'bg-slate-700/20 ring-1 ring-[#F2545B]/30' : ''}`}
                 />
               ))}
             </div>
@@ -256,17 +250,17 @@ function ScheduleGrid() {
         >
           <div className="space-y-0.5">
             <div className="font-semibold text-sm flex items-center gap-2">
-              <span className="text-blue-300">{tooltip.content.code}</span>
-              <span className="text-slate-400 font-normal text-[11px]">·</span>
+              <span className="text-[#F2545B]">{tooltip.content.code}</span>
+              <span className="text-[#9E9E9E] font-normal text-[11px]">·</span>
               <span className="font-normal text-sm">{tooltip.content.name}</span>
             </div>
-            <div className="text-[11px] text-slate-300 space-y-0.5">
+            <div className="text-[11px] text-[#E8DFB5] space-y-0.5">
               <div>👨‍🏫 {tooltip.content.teacher}</div>
               <div className="flex gap-3">
                 <span>📋 {tooltip.content.section}</span>
                 <span>🏫 {tooltip.content.classroom}</span>
               </div>
-              <div className="text-slate-400 text-[10px]">
+              <div className="text-[#9E9E9E] text-[10px]">
                 🕐 {tooltip.content.time} · {tooltip.content.type}
               </div>
             </div>
@@ -278,7 +272,7 @@ function ScheduleGrid() {
               height: 0,
               borderLeft: '6px solid transparent',
               borderRight: '6px solid transparent',
-              borderTop: '6px solid #1e293b',
+              borderTop: '6px solid #2B1B17',
             }}
           />
         </div>
