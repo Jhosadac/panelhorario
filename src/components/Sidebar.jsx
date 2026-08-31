@@ -2,6 +2,9 @@ import React, { useState, useMemo } from 'react'
 import { useSchedule } from '../context/ScheduleContext'
 import { COLORS } from '../utils/colors'
 
+// Secciones permitidas para EPIES
+const EPIES_SECTIONS = ['A', 'B', 'C', 'D', 'E']
+
 function Sidebar() {
   const {
     courses,
@@ -38,6 +41,20 @@ function Sidebar() {
     return result
   }, [courses, tempDepartments, tempCycles])
 
+  // Obtener las secciones de un curso según su escuela
+  const getSectionsForCourse = (course) => {
+    const courseSchedules = schedules.filter(s => s.course_name === course.name)
+    const allSections = [...new Set(courseSchedules.map(s => s.class).filter(Boolean))]
+    
+    // Filtrar según la escuela
+    if (course.department === 'EPIES') {
+      return allSections.filter(sec => EPIES_SECTIONS.includes(sec))
+    } else if (course.department === 'EPIEC') {
+      return allSections.filter(sec => !EPIES_SECTIONS.includes(sec))
+    }
+    return allSections
+  }
+
   // Actualiza las secciones seleccionadas según los filtros actuales
   const updateSectionsForCurrentFilters = (depts, cycles) => {
     let filtered = courses
@@ -56,8 +73,7 @@ function Sidebar() {
     })
     // Marcar todas las secciones de los cursos que sí están
     filtered.forEach(course => {
-      const courseSchedules = schedules.filter(s => s.course_name === course.name)
-      const sections = [...new Set(courseSchedules.map(s => s.class).filter(Boolean))]
+      const sections = getSectionsForCourse(course)
       newSections[course.name] = sections
     })
     dispatch({ type: 'SET_TEMP_SECTIONS', payload: newSections })
@@ -75,7 +91,6 @@ function Sidebar() {
 
     // Filtrar ciclos seleccionados para que solo queden los disponibles con la nueva escuela
     const filteredCycles = availableCycles.filter(c => {
-      // Verificar si existe algún curso con ese ciclo y la nueva escuela
       return courses.some(course => 
         course.cycle === c && newDepts.includes(course.department)
       )
@@ -99,8 +114,10 @@ function Sidebar() {
 
   // Toggle todas las secciones de un curso
   const toggleCourse = (courseName) => {
-    const courseSchedules = schedules.filter(s => s.course_name === courseName)
-    const sections = [...new Set(courseSchedules.map(s => s.class).filter(Boolean))]
+    const course = courses.find(c => c.name === courseName)
+    if (!course) return
+    
+    const sections = getSectionsForCourse(course)
     const current = tempSections[courseName] || []
     let newSelected
     if (current.length === sections.length && sections.length > 0) {
@@ -223,8 +240,7 @@ function Sidebar() {
             </div>
             <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
               {filteredCourses.map(course => {
-                const courseSchedules = schedules.filter(s => s.course_name === course.name)
-                const sections = [...new Set(courseSchedules.map(s => s.class).filter(Boolean))]
+                const sections = getSectionsForCourse(course)
                 const selected = tempSections[course.name] || []
                 const allSelected = sections.length > 0 && selected.length === sections.length
                 const color = getColor(course.id)
