@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react'
 import { supabase } from '../services/supabase'
-import { DAYS, getTodayDay, isNowBetween } from '../utils/helpers'
+import { DAYS, getTodayDay } from '../utils/helpers'
 
 const initialState = {
   courses: [],
@@ -9,15 +9,15 @@ const initialState = {
   schedules: [],
 
   // Filtros temporales (UI)
-  tempDepartments: [],        // Ahora es exclusivo (un solo elemento o vacío)
-  tempSections: {},          // { 'courseName': ['A', 'B'] }
-  tempCycle: '',             // string, vacío = todos
-  tempFilterType: 'all',     // 'all', 'teoria', 'practica'
+  tempDepartments: [],         // array de escuelas seleccionadas
+  tempSections: {},            // { courseName: ['A','B'] }
+  tempCycles: [],              // array de ciclos seleccionados (ej. ['1ro','2do'])
+  tempFilterType: 'all',       // 'all' | 'teoria' | 'practica'
 
   // Filtros activos (aplicados)
   activeDepartments: [],
   activeSections: {},
-  activeCycle: '',
+  activeCycles: [],
   activeFilterType: 'all',
 
   loading: false,
@@ -46,8 +46,8 @@ function scheduleReducer(state, action) {
       return { ...state, tempDepartments: action.payload }
     case 'SET_TEMP_SECTIONS':
       return { ...state, tempSections: action.payload }
-    case 'SET_TEMP_CYCLE':
-      return { ...state, tempCycle: action.payload }
+    case 'SET_TEMP_CYCLES':
+      return { ...state, tempCycles: action.payload }
     case 'SET_TEMP_FILTER_TYPE':
       return { ...state, tempFilterType: action.payload }
 
@@ -56,7 +56,7 @@ function scheduleReducer(state, action) {
         ...state,
         activeDepartments: state.tempDepartments,
         activeSections: state.tempSections,
-        activeCycle: state.tempCycle,
+        activeCycles: state.tempCycles,
         activeFilterType: state.tempFilterType,
       }
 
@@ -105,15 +105,18 @@ export function ScheduleProvider({ children }) {
         payload: { courses, teachers, classrooms, schedules }
       })
 
-      // Inicializar: seleccionar todos los departamentos y todas las secciones
+      // Inicializar: todos los departamentos y todos los ciclos (únicos)
       const allDepts = [...new Set(courses.map(c => c.department).filter(Boolean))]
+      const allCycles = [...new Set(courses.map(c => c.cycle).filter(Boolean))]
       const initialSections = {}
       courses.forEach(course => {
         const courseSchedules = schedules.filter(s => s.course_name === course.name)
         const sections = [...new Set(courseSchedules.map(s => s.class).filter(Boolean))]
         initialSections[course.name] = sections
       })
+
       dispatch({ type: 'SET_TEMP_DEPARTMENTS', payload: allDepts })
+      dispatch({ type: 'SET_TEMP_CYCLES', payload: allCycles })
       dispatch({ type: 'SET_TEMP_SECTIONS', payload: initialSections })
       dispatch({ type: 'APPLY_FILTERS' })
 
