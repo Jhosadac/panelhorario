@@ -8,7 +8,7 @@ function Sidebar() {
     schedules,
     tempDepartments,
     tempSections,
-    tempCycle,
+    tempCycles,
     tempFilterType,
     occupancy,
     dispatch,
@@ -16,8 +16,8 @@ function Sidebar() {
 
   const [isOpen, setIsOpen] = useState(true)
 
-  // Ciclos disponibles según el departamento seleccionado
-  const cycles = useMemo(() => {
+  // Ciclos disponibles según el/los departamento(s) seleccionado(s)
+  const availableCycles = useMemo(() => {
     let filtered = courses
     if (tempDepartments.length > 0) {
       filtered = filtered.filter(c => tempDepartments.includes(c.department))
@@ -26,26 +26,26 @@ function Sidebar() {
     return Array.from(unique).sort()
   }, [courses, tempDepartments])
 
-  // Cursos según departamento y ciclo temporal
+  // Cursos según departamentos y ciclos seleccionados
   const filteredCourses = useMemo(() => {
     let result = courses
     if (tempDepartments.length > 0) {
       result = result.filter(c => tempDepartments.includes(c.department))
     }
-    if (tempCycle) {
-      result = result.filter(c => c.cycle === tempCycle)
+    if (tempCycles.length > 0) {
+      result = result.filter(c => tempCycles.includes(c.cycle))
     }
     return result
-  }, [courses, tempDepartments, tempCycle])
+  }, [courses, tempDepartments, tempCycles])
 
-  // Actualiza las secciones seleccionadas según los filtros actuales (departamento y ciclo)
-  const updateSectionsForCurrentFilters = (depts, cycle) => {
+  // Actualiza las secciones seleccionadas según los filtros actuales
+  const updateSectionsForCurrentFilters = (depts, cycles) => {
     let filtered = courses
     if (depts.length > 0) {
       filtered = filtered.filter(c => depts.includes(c.department))
     }
-    if (cycle) {
-      filtered = filtered.filter(c => c.cycle === cycle)
+    if (cycles.length > 0) {
+      filtered = filtered.filter(c => cycles.includes(c.cycle))
     }
     const newSections = { ...tempSections }
     // Desmarcar cursos que no están en filtered
@@ -63,25 +63,38 @@ function Sidebar() {
     dispatch({ type: 'SET_TEMP_SECTIONS', payload: newSections })
   }
 
-  // Manejar clic en departamento (exclusivo)
+  // Manejar clic en departamento (exclusivo, pero permite vacío)
   const handleDepartmentClick = (dept) => {
     let newDepts
     if (tempDepartments.includes(dept) && tempDepartments.length === 1) {
-      // Si es el único seleccionado, lo deseleccionamos (vacío)
       newDepts = []
     } else {
-      // Seleccionamos solo este
       newDepts = [dept]
     }
     dispatch({ type: 'SET_TEMP_DEPARTMENTS', payload: newDepts })
-    updateSectionsForCurrentFilters(newDepts, tempCycle)
+
+    // Filtrar ciclos seleccionados para que solo queden los disponibles con la nueva escuela
+    const filteredCycles = availableCycles.filter(c => {
+      // Verificar si existe algún curso con ese ciclo y la nueva escuela
+      return courses.some(course => 
+        course.cycle === c && newDepts.includes(course.department)
+      )
+    })
+    dispatch({ type: 'SET_TEMP_CYCLES', payload: filteredCycles })
+
+    updateSectionsForCurrentFilters(newDepts, filteredCycles)
   }
 
-  // Cambio de ciclo
-  const handleCycleChange = (e) => {
-    const cycle = e.target.value
-    dispatch({ type: 'SET_TEMP_CYCLE', payload: cycle })
-    updateSectionsForCurrentFilters(tempDepartments, cycle)
+  // Toggle de ciclo
+  const toggleCycle = (cycle) => {
+    let newCycles
+    if (tempCycles.includes(cycle)) {
+      newCycles = tempCycles.filter(c => c !== cycle)
+    } else {
+      newCycles = [...tempCycles, cycle]
+    }
+    dispatch({ type: 'SET_TEMP_CYCLES', payload: newCycles })
+    updateSectionsForCurrentFilters(tempDepartments, newCycles)
   }
 
   // Toggle todas las secciones de un curso
@@ -178,19 +191,28 @@ function Sidebar() {
             )}
           </div>
 
-          {/* Ciclo */}
+          {/* Ciclos (múltiple selección) */}
           <div className="sidebar-section">
-            <label className="sidebar-label">📋 Ciclo</label>
-            <select
-              value={tempCycle}
-              onChange={handleCycleChange}
-              className="w-full bg-white border border-[#E0E0E0] rounded-lg px-3 py-2 text-sm text-[#333333] focus:outline-none focus:ring-2 focus:ring-[#6B1F1F] transition"
-            >
-              <option value="">Todos los ciclos</option>
-              {cycles.map(cycle => (
-                <option key={cycle} value={cycle}>{cycle}</option>
+            <label className="sidebar-label">📋 Ciclos</label>
+            <div className="flex flex-wrap gap-1.5">
+              {availableCycles.map(cycle => (
+                <button
+                  key={cycle}
+                  onClick={() => toggleCycle(cycle)}
+                  className={`
+                    px-3 py-1 rounded-full text-xs font-medium transition border
+                    ${tempCycles.includes(cycle)
+                      ? 'bg-[#6B1F1F] text-white border-[#6B1F1F]'
+                      : 'bg-white text-[#6B1F1F] border-[#6B1F1F] hover:bg-[#F2545B] hover:text-white'}
+                  `}
+                >
+                  {cycle}
+                </button>
               ))}
-            </select>
+              {availableCycles.length === 0 && (
+                <span className="text-xs text-[#9E9E9E]">Sin ciclos disponibles</span>
+              )}
+            </div>
           </div>
 
           {/* Cursos y secciones */}
@@ -318,7 +340,7 @@ function Sidebar() {
               <span className="font-medium text-[#333333]">Escuela:</span> {tempDepartments.join(', ') || 'Ninguna'}
             </div>
             <div className="text-xs text-[#9E9E9E]">
-              <span className="font-medium text-[#333333]">Ciclo:</span> {tempCycle || 'Todos'}
+              <span className="font-medium text-[#333333]">Ciclos:</span> {tempCycles.length > 0 ? tempCycles.join(', ') : 'Todos'}
             </div>
           </div>
         </div>
