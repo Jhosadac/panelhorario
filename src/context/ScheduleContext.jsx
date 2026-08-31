@@ -1,24 +1,24 @@
-// src/context/ScheduleContext.jsx
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react'
 import { supabase } from '../services/supabase'
-import { DAYS, getTodayDay } from '../utils/helpers'
+import { DAYS, getTodayDay, isNowBetween } from '../utils/helpers'
 
-// Estado inicial
 const initialState = {
   courses: [],
   teachers: [],
   classrooms: [],
   schedules: [],
-  selectedCourses: [],
+  // Filtros
+  selectedDepartments: [],      // ['EPIES', 'EPIEC']
+  selectedSections: {},         // { 'courseName': ['A', 'B'] }  o también puede ser un conjunto de strings 'courseName|section'
   selectedCycle: '',
-  filterType: 'all', // 'all' | 'teoria' | 'practica'
+  filterType: 'all',            // 'all' | 'teoria' | 'practica'
   selectedClassroom: '',
+  selectedGlobalSection: '',    // filtro global por sección (texto)
   loading: false,
   error: null,
   occupancy: [],
 }
 
-// Reducer
 function scheduleReducer(state, action) {
   switch (action.type) {
     case 'SET_LOADING':
@@ -33,81 +33,62 @@ function scheduleReducer(state, action) {
         classrooms: action.payload.classrooms || state.classrooms,
         schedules: action.payload.schedules || state.schedules,
       }
-    case 'SET_SELECTED_COURSES':
-      return { ...state, selectedCourses: action.payload }
+    case 'SET_OCCUPANCY':
+      return { ...state, occupancy: action.payload }
+    case 'SET_SELECTED_DEPARTMENTS':
+      return { ...state, selectedDepartments: action.payload }
+    case 'SET_SELECTED_SECTIONS':
+      return { ...state, selectedSections: action.payload }
     case 'SET_SELECTED_CYCLE':
       return { ...state, selectedCycle: action.payload }
     case 'SET_FILTER_TYPE':
       return { ...state, filterType: action.payload }
     case 'SET_SELECTED_CLASSROOM':
       return { ...state, selectedClassroom: action.payload }
-    case 'SET_OCCUPANCY':
-      return { ...state, occupancy: action.payload }
-    case 'TOGGLE_COURSE':
-      const idx = state.selectedCourses.indexOf(action.payload)
-      if (idx >= 0) {
-        return { ...state, selectedCourses: state.selectedCourses.filter(c => c !== action.payload) }
-      } else {
-        return { ...state, selectedCourses: [...state.selectedCourses, action.payload] }
-      }
-    case 'SELECT_COURSES_BY_CYCLE':
-      const coursesInCycle = state.courses
-        .filter(c => c.cycle === action.payload)
-        .map(c => c.id)
-      return { ...state, selectedCourses: coursesInCycle }
+    case 'SET_SELECTED_GLOBAL_SECTION':
+      return { ...state, selectedGlobalSection: action.payload }
     default:
       return state
   }
 }
 
-// Context
 const ScheduleContext = createContext()
 
 export function ScheduleProvider({ children }) {
   const [state, dispatch] = useReducer(scheduleReducer, initialState)
 
-  // Cargar datos iniciales
   const loadData = useCallback(async () => {
     dispatch({ type: 'SET_LOADING', payload: true })
     dispatch({ type: 'SET_ERROR', payload: null })
 
     try {
-      // Cargar cursos
+      // Obtener cursos
       const { data: courses, error: coursesError } = await supabase
         .from('courses')
         .select('*')
         .order('code')
-
       if (coursesError) throw coursesError
 
-      // Cargar docentes
+      // Obtener docentes (solo nombre)
       const { data: teachers, error: teachersError } = await supabase
         .from('teachers')
         .select('*')
         .order('name')
-
       if (teachersError) throw teachersError
 
-      // Cargar aulas
+      // Obtener aulas
       const { data: classrooms, error: classroomsError } = await supabase
         .from('classrooms')
         .select('*')
         .order('name')
-
       if (classroomsError) throw classroomsError
 
-      // Cargar horarios con relaciones
+      // Obtener horarios
       const { data: schedules, error: schedulesError } = await supabase
         .from('schedules')
-        .select(`
-          *,
-          courses:course_id (id, code, name, cycle, credits),
-          teachers:teacher_id (id, name, email),
-          classrooms:classroom_id (id, name, capacity, type)
-        `)
+        .select('*')
         .order('day_of_week')
         .order('start_time')
-
       if (schedulesError) throw schedulesError
 
       dispatch({
@@ -115,12 +96,25 @@ export function ScheduleProvider({ children }) {
         payload: { courses, teachers, classrooms, schedules }
       })
 
-      // Si no hay cursos seleccionados, seleccionar todos
-      if (state.selectedCourses.length === 0 && courses.length > 0) {
-        dispatch({ type: 'SET_SELECTED_COURSES', payload: courses.map(c => c.id) })
-      }
+      // Inicializar selección de secciones: por defecto todas las secciones de todos los cursos
+      const initialSections = {}
+      courses.forEach(course => {
+        const courseSchedules = schedules.filter(s => s.course_name === course.name)
+        const sections = [...new Set(courseSchedules.map(s => s.class).filter(Boolean))]
+        if (sections.length > 0) {
+          initialSections[course.name] = sections
+        } else {
+          // Si no hay secciones, poner un array vacío o null? Lo dejamos vacío para que no se seleccione nada
+          initialSections[course.name] = []
+        }
+      })
+      dispatch({ type: 'SET_SELECTED_SECTIONS', payload: initialSections })
 
-      // Calcular ocupación inicial
+      // Seleccionar todos los departamentos por defecto
+      const depts = [...new Set(courses.map(c => c.department).filter(Boolean))]
+      dispatch({ type: 'SET_SELECTED_DEPARTMENTS', payload: depts })
+
+      // Calcular ocupación
       await updateOccupancy(classrooms, schedules)
 
     } catch (error) {
@@ -131,7 +125,6 @@ export function ScheduleProvider({ children }) {
     }
   }, [])
 
-  // Actualizar ocupación
   const updateOccupancy = useCallback(async (classrooms = state.classrooms, schedules = state.schedules) => {
     try {
       const today = getTodayDay()
@@ -139,49 +132,33 @@ export function ScheduleProvider({ children }) {
       const nowStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
 
       const occupancy = classrooms.map(classroom => {
-        // Buscar si hay algún horario en esta aula para hoy que incluya la hora actual
         const active = schedules.some(s =>
-          s.classroom_id === classroom.id &&
+          s.classroom === classroom.name &&
           s.day_of_week === today &&
           s.start_time <= nowStr &&
           s.end_time > nowStr
         )
-        return {
-          ...classroom,
-          occupied: active,
-        }
+        return { ...classroom, occupied: active }
       })
-
       dispatch({ type: 'SET_OCCUPANCY', payload: occupancy })
     } catch (error) {
       console.error('Error actualizando ocupación:', error)
     }
   }, [state.classrooms, state.schedules])
 
-  // Efecto de carga inicial
   useEffect(() => {
     loadData()
   }, [])
 
-  // Actualizar ocupación cada minuto
   useEffect(() => {
     const interval = setInterval(() => {
       updateOccupancy()
     }, 60000)
-
     return () => clearInterval(interval)
   }, [updateOccupancy])
 
-  // Value del context
-  const value = {
-    ...state,
-    dispatch,
-    loadData,
-    updateOccupancy,
-  }
-
   return (
-    <ScheduleContext.Provider value={value}>
+    <ScheduleContext.Provider value={{ ...state, dispatch, loadData, updateOccupancy }}>
       {children}
     </ScheduleContext.Provider>
   )
