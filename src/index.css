@@ -35,8 +35,6 @@
   .course-block {
     @apply rounded-lg shadow-md transition-all duration-100 hover:shadow-lg hover:scale-[1.01] cursor-pointer overflow-hidden;
     position: absolute;
-    left: 2px;
-    right: 2px;
     border: 1px solid rgba(255, 255, 255, 0.08);
   }
   .course-block-content {
