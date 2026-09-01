@@ -3,6 +3,9 @@ import { useSchedule } from '../context/ScheduleContext'
 import { DAYS, HOURS, HOUR_START, getPositionAndHeight, formatTime, isToday } from '../utils/helpers'
 import { getCourseColor } from '../utils/colors'
 
+const EPIES_SECTIONS = ['A', 'B', 'C', 'D', 'E']
+const getSectionKey = (courseName, department) => `${courseName}|${department}`
+
 function ScheduleGrid() {
   const {
     schedules,
@@ -14,27 +17,32 @@ function ScheduleGrid() {
 
   const [tooltip, setTooltip] = useState(null)
 
-  const activeCourseNames = useMemo(() => {
-    const names = new Set()
-    Object.entries(activeSections).forEach(([courseName, sections]) => {
-      if (sections.length > 0) names.add(courseName)
-    })
-    return names
-  }, [activeSections])
+  // Obtener lista de claves de cursos activos (de activeSections)
+  const activeKeys = useMemo(() => new Set(Object.keys(activeSections)), [activeSections])
 
+  // Filtrar horarios usando clave compuesta (inferir departamento de la sección)
   const filteredSchedules = useMemo(() => {
     return schedules.filter(s => {
-      if (!activeCourseNames.has(s.course_name)) return false
-      const courseSections = activeSections[s.course_name] || []
-      if (!courseSections.includes(s.class)) return false
+      // Inferir departamento a partir de la sección
+      const inferredDept = EPIES_SECTIONS.includes(s.class) ? 'EPIES' : 'EPIEC'
+      const key = getSectionKey(s.course_name, inferredDept)
+
+      // Verificar si el curso está activo y la sección está seleccionada
+      if (!activeKeys.has(key)) return false
+      const selectedSections = activeSections[key] || []
+      if (!selectedSections.includes(s.class)) return false
+
+      // Filtrar por tipo
       if (activeFilterType !== 'all') {
         const typeLower = s.category?.toLowerCase() || ''
         if (typeLower !== activeFilterType) return false
       }
+
       return true
     })
-  }, [schedules, activeCourseNames, activeSections, activeFilterType])
+  }, [schedules, activeKeys, activeSections, activeFilterType])
 
+  // Agrupar por día y manejar solapamientos
   const groupedByDay = useMemo(() => {
     const result = {}
     DAYS.forEach(day => {
@@ -145,9 +153,9 @@ function ScheduleGrid() {
           ))}
         </div>
 
-        {/* Cuerpo de la cuadrícula */}
+        {/* Cuerpo */}
         <div className="relative">
-          {/* Filas de horas y celdas (solo para el fondo) */}
+          {/* Filas de horas */}
           {HOURS.map(hour => (
             <div key={hour} className="grid grid-cols-[60px_repeat(7,1fr)]">
               <div className="schedule-cell border-l-0 bg-[#E8DFB5]/10 flex items-center justify-end pr-2">
@@ -164,7 +172,7 @@ function ScheduleGrid() {
             </div>
           ))}
 
-          {/* Contenedores por día para los bloques */}
+          {/* Bloques por día */}
           {DAYS.map((day, dayIndex) => {
             const groups = groupedByDay[day] || []
             if (groups.length === 0) return null
