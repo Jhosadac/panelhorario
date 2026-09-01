@@ -12,10 +12,10 @@ const initialState = {
   schedules: [],
 
   // Filtros temporales (UI)
-  tempDepartments: [],         // array de escuelas seleccionadas
-  tempSections: {},            // { courseName: ['A','B'] }
-  tempCycles: [],              // array de ciclos seleccionados (ej. ['1ro','2do'])
-  tempFilterType: 'all',       // 'all' | 'teoria' | 'practica'
+  tempDepartments: [],
+  tempSections: {},
+  tempCycles: [],
+  tempFilterType: 'all',
 
   // Filtros activos (aplicados)
   activeDepartments: [],
@@ -54,14 +54,38 @@ function scheduleReducer(state, action) {
     case 'SET_TEMP_FILTER_TYPE':
       return { ...state, tempFilterType: action.payload }
 
-    case 'APPLY_FILTERS':
+    case 'APPLY_FILTERS': {
+      // Filtrar las secciones temporales para que solo incluyan cursos que cumplan
+      // con los filtros de departamento y ciclo activos.
+      const { tempDepartments, tempCycles, tempSections, tempFilterType, courses } = state
+      const filteredSections = {}
+      Object.keys(tempSections).forEach(courseName => {
+        const course = courses.find(c => c.name === courseName)
+        if (course) {
+          const deptMatch = tempDepartments.length === 0 || tempDepartments.includes(course.department)
+          const cycleMatch = tempCycles.length === 0 || tempCycles.includes(course.cycle)
+          if (deptMatch && cycleMatch) {
+            // También podríamos aplicar el filtro de secciones por escuela aquí, pero ya debería estar
+            // filtrado en tempSections. Si no, lo filtramos de nuevo.
+            let sections = tempSections[courseName] || []
+            // Asegurar que las secciones estén filtradas según la escuela (por si acaso)
+            if (course.department === 'EPIES') {
+              sections = sections.filter(sec => EPIES_SECTIONS.includes(sec))
+            } else if (course.department === 'EPIEC') {
+              sections = sections.filter(sec => !EPIES_SECTIONS.includes(sec))
+            }
+            filteredSections[courseName] = sections
+          }
+        }
+      })
       return {
         ...state,
-        activeDepartments: state.tempDepartments,
-        activeSections: state.tempSections,
-        activeCycles: state.tempCycles,
-        activeFilterType: state.tempFilterType,
+        activeDepartments: tempDepartments,
+        activeSections: filteredSections,
+        activeCycles: tempCycles,
+        activeFilterType: tempFilterType,
       }
+    }
 
     default:
       return state
@@ -112,7 +136,7 @@ export function ScheduleProvider({ children }) {
       const allDepts = [...new Set(courses.map(c => c.department).filter(Boolean))]
       const allCycles = [...new Set(courses.map(c => c.cycle).filter(Boolean))]
 
-      // Inicializar secciones filtrando por escuela (misma lógica que en Sidebar)
+      // Inicializar secciones filtrando por escuela
       const initialSections = {}
       courses.forEach(course => {
         const courseSchedules = schedules.filter(s => s.course_name === course.name)
@@ -123,7 +147,7 @@ export function ScheduleProvider({ children }) {
         } else if (course.department === 'EPIEC') {
           filteredSections = allSections.filter(sec => !EPIES_SECTIONS.includes(sec))
         } else {
-          filteredSections = allSections // fallback
+          filteredSections = allSections
         }
         initialSections[course.name] = filteredSections
       })
@@ -131,6 +155,7 @@ export function ScheduleProvider({ children }) {
       dispatch({ type: 'SET_TEMP_DEPARTMENTS', payload: allDepts })
       dispatch({ type: 'SET_TEMP_CYCLES', payload: allCycles })
       dispatch({ type: 'SET_TEMP_SECTIONS', payload: initialSections })
+      // Aplicar filtros iniciales (esto ejecutará el filtrado en APPLY_FILTERS)
       dispatch({ type: 'APPLY_FILTERS' })
 
       await updateOccupancy(classrooms, schedules)
