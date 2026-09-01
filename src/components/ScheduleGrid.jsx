@@ -11,7 +11,6 @@ function ScheduleGrid() {
     schedules,
     courses,
     activeSections,
-    activeFilterType,
     loading,
   } = useSchedule()
 
@@ -32,15 +31,9 @@ function ScheduleGrid() {
       const selectedSections = activeSections[key] || []
       if (!selectedSections.includes(s.class)) return false
 
-      // Filtrar por tipo
-      if (activeFilterType !== 'all') {
-        const typeLower = s.category?.toLowerCase() || ''
-        if (typeLower !== activeFilterType) return false
-      }
-
       return true
     })
-  }, [schedules, activeKeys, activeSections, activeFilterType])
+  }, [schedules, activeKeys, activeSections])
 
   // Agrupar por día y manejar solapamientos
   const groupedByDay = useMemo(() => {
