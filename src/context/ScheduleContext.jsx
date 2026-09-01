@@ -11,12 +11,12 @@ const initialState = {
   schedules: [],
 
   tempDepartments: [],
-  tempSections: {},
+  tempSections: {},        // clave: "courseName|department"
   tempCycles: [],
   tempFilterType: 'all',
 
   activeDepartments: [],
-  activeSections: {},
+  activeSections: {},      // clave: "courseName|department"
   activeCycles: [],
   activeFilterType: 'all',
 
@@ -25,11 +25,12 @@ const initialState = {
   occupancy: [],
 }
 
-const filterSectionsByDepartment = (course, sections) => {
-  if (!course || !course.department) return sections
-  if (course.department === 'EPIES') {
+const getSectionKey = (courseName, department) => `${courseName}|${department}`
+
+const filterSectionsByDepartment = (sections, department) => {
+  if (department === 'EPIES') {
     return sections.filter(sec => EPIES_SECTIONS.includes(sec))
-  } else if (course.department === 'EPIEC') {
+  } else if (department === 'EPIEC') {
     return sections.filter(sec => !EPIES_SECTIONS.includes(sec))
   }
   return sections
@@ -64,8 +65,9 @@ function scheduleReducer(state, action) {
     case 'APPLY_FILTERS': {
       const filteredActiveSections = {}
       state.courses.forEach(course => {
-        const sections = state.tempSections[course.name] || []
-        filteredActiveSections[course.name] = filterSectionsByDepartment(course, sections)
+        const key = getSectionKey(course.name, course.department)
+        const sections = state.tempSections[key] || []
+        filteredActiveSections[key] = filterSectionsByDepartment(sections, course.department)
       })
       return {
         ...state,
@@ -128,7 +130,8 @@ export function ScheduleProvider({ children }) {
       courses.forEach(course => {
         const courseSchedules = schedules.filter(s => s.course_name === course.name)
         const allSections = [...new Set(courseSchedules.map(s => s.class).filter(Boolean))]
-        initialSections[course.name] = filterSectionsByDepartment(course, allSections)
+        const key = getSectionKey(course.name, course.department)
+        initialSections[key] = filterSectionsByDepartment(allSections, course.department)
       })
 
       dispatch({ type: 'SET_TEMP_DEPARTMENTS', payload: allDepts })
