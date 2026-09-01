@@ -119,7 +119,7 @@ function Sidebar() {
     if (current.length === sections.length && sections.length > 0) {
       newSelected = []
     } else {
-      newSelected = sections
+      newSelected = [...sections] // clonar para evitar referencias
     }
     dispatch({
       type: 'SET_TEMP_SECTIONS',
@@ -155,14 +155,17 @@ function Sidebar() {
     return COLORS[Math.abs(hash) % COLORS.length]
   }
 
-  // Contador de secciones seleccionadas SOLO para los cursos que cumplen los filtros temporales
+  // Contador: marcadas vs totales
   const selectedCount = useMemo(() => {
-    let count = 0
+    let marked = 0
+    let total = 0
     filteredCourses.forEach(course => {
+      const sections = getSectionsForCourse(course)
       const selected = tempSections[course.name] || []
-      count += selected.length
+      marked += selected.length
+      total += sections.length
     })
-    return count
+    return { marked, total }
   }, [filteredCourses, tempSections])
 
   return (
@@ -234,7 +237,9 @@ function Sidebar() {
           <div className="sidebar-section">
             <div className="flex items-center justify-between mb-2">
               <label className="sidebar-label mb-0">📚 Cursos y secciones</label>
-              <span className="text-xs text-[#9E9E9E]">{selectedCount} secciones seleccionadas</span>
+              <span className="text-xs text-[#9E9E9E]">
+                {selectedCount.marked} de {selectedCount.total} secciones seleccionadas
+              </span>
             </div>
             <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
               {filteredCourses.map(course => {
@@ -348,7 +353,7 @@ function Sidebar() {
           {/* Resumen */}
           <div className="border-t border-[#E0E0E0] pt-4 mt-2">
             <div className="text-xs text-[#9E9E9E]">
-              <span className="font-medium text-[#333333]">Secciones seleccionadas:</span> {selectedCount}
+              <span className="font-medium text-[#333333]">Secciones marcadas:</span> {selectedCount.marked} de {selectedCount.total}
             </div>
             <div className="text-xs text-[#9E9E9E] mt-1">
               <span className="font-medium text-[#333333]">Escuela:</span> {tempDepartments.join(', ') || 'Ninguna'}
