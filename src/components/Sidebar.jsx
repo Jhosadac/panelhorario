@@ -45,8 +45,6 @@ function Sidebar() {
   const getSectionsForCourse = (course) => {
     const courseSchedules = schedules.filter(s => s.course_name === course.name)
     const allSections = [...new Set(courseSchedules.map(s => s.class).filter(Boolean))]
-    
-    // Filtrar según la escuela
     if (course.department === 'EPIES') {
       return allSections.filter(sec => EPIES_SECTIONS.includes(sec))
     } else if (course.department === 'EPIEC') {
@@ -89,7 +87,6 @@ function Sidebar() {
     }
     dispatch({ type: 'SET_TEMP_DEPARTMENTS', payload: newDepts })
 
-    // Filtrar ciclos seleccionados para que solo queden los disponibles con la nueva escuela
     const filteredCycles = availableCycles.filter(c => {
       return courses.some(course => 
         course.cycle === c && newDepts.includes(course.department)
@@ -116,7 +113,6 @@ function Sidebar() {
   const toggleCourse = (courseName) => {
     const course = courses.find(c => c.name === courseName)
     if (!course) return
-    
     const sections = getSectionsForCourse(course)
     const current = tempSections[courseName] || []
     let newSelected
@@ -159,13 +155,15 @@ function Sidebar() {
     return COLORS[Math.abs(hash) % COLORS.length]
   }
 
+  // Contador de secciones seleccionadas SOLO para los cursos que cumplen los filtros temporales
   const selectedCount = useMemo(() => {
     let count = 0
-    Object.entries(tempSections).forEach(([courseName, sections]) => {
-      count += sections.length
+    filteredCourses.forEach(course => {
+      const selected = tempSections[course.name] || []
+      count += selected.length
     })
     return count
-  }, [tempSections])
+  }, [filteredCourses, tempSections])
 
   return (
     <>
@@ -236,7 +234,7 @@ function Sidebar() {
           <div className="sidebar-section">
             <div className="flex items-center justify-between mb-2">
               <label className="sidebar-label mb-0">📚 Cursos y secciones</label>
-              <span className="text-xs text-[#9E9E9E]">{selectedCount} secciones</span>
+              <span className="text-xs text-[#9E9E9E]">{selectedCount} secciones seleccionadas</span>
             </div>
             <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
               {filteredCourses.map(course => {
