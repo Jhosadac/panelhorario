@@ -301,27 +301,6 @@ function Sidebar() {
             </div>
           </div>
 
-          {/* Tipo de BH */}
-          <div className="sidebar-section">
-            <label className="sidebar-label">🎯 Tipo de BH</label>
-            <div className="flex gap-2">
-              {['all', 'teoria', 'practica'].map(type => (
-                <button
-                  key={type}
-                  onClick={() => dispatch({ type: 'SET_TEMP_FILTER_TYPE', payload: type })}
-                  className={`
-                    flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition capitalize border
-                    ${tempFilterType === type
-                      ? 'bg-[#6B1F1F] text-white border-[#6B1F1F]'
-                      : 'bg-white text-[#6B1F1F] border-[#6B1F1F] hover:bg-[#F2545B] hover:text-white'}
-                  `}
-                >
-                  {type === 'all' ? 'Todos' : type === 'teoria' ? 'Teoría' : 'Práctica'}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Aplicar filtros */}
           <div className="sidebar-section">
             <button
