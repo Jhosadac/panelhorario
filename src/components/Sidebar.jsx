@@ -12,7 +12,6 @@ function Sidebar() {
     tempDepartments,
     tempSections,
     tempCycles,
-    tempFilterType,
     occupancy,
     dispatch,
   } = useSchedule()
