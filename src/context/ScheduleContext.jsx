@@ -13,12 +13,10 @@ const initialState = {
   tempDepartments: [],
   tempSections: {},        // clave: "courseName|department"
   tempCycles: [],
-  tempFilterType: 'all',
 
   activeDepartments: [],
   activeSections: {},      // clave: "courseName|department"
   activeCycles: [],
-  activeFilterType: 'all',
 
   loading: false,
   error: null,
@@ -59,8 +57,6 @@ function scheduleReducer(state, action) {
       return { ...state, tempSections: action.payload }
     case 'SET_TEMP_CYCLES':
       return { ...state, tempCycles: action.payload }
-    case 'SET_TEMP_FILTER_TYPE':
-      return { ...state, tempFilterType: action.payload }
 
     case 'APPLY_FILTERS': {
       const filteredActiveSections = {}
@@ -74,7 +70,6 @@ function scheduleReducer(state, action) {
         activeDepartments: state.tempDepartments,
         activeSections: filteredActiveSections,
         activeCycles: state.tempCycles,
-        activeFilterType: state.tempFilterType,
       }
     }
 
