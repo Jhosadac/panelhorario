@@ -2,7 +2,6 @@ import React, { createContext, useContext, useReducer, useEffect, useCallback } 
 import { supabase } from '../services/supabase'
 import { DAYS, getTodayDay } from '../utils/helpers'
 
-// Secciones permitidas para EPIES (misma definición que en Sidebar)
 const EPIES_SECTIONS = ['A', 'B', 'C', 'D', 'E']
 
 const initialState = {
@@ -26,8 +25,8 @@ const initialState = {
   occupancy: [],
 }
 
-// Función auxiliar para filtrar secciones por escuela
 const filterSectionsByDepartment = (course, sections) => {
+  if (!course || !course.department) return sections
   if (course.department === 'EPIES') {
     return sections.filter(sec => EPIES_SECTIONS.includes(sec))
   } else if (course.department === 'EPIEC') {
@@ -63,13 +62,11 @@ function scheduleReducer(state, action) {
       return { ...state, tempFilterType: action.payload }
 
     case 'APPLY_FILTERS': {
-      // Aplicar filtro de secciones por escuela a las secciones activas
       const filteredActiveSections = {}
       state.courses.forEach(course => {
         const sections = state.tempSections[course.name] || []
         filteredActiveSections[course.name] = filterSectionsByDepartment(course, sections)
       })
-
       return {
         ...state,
         activeDepartments: state.tempDepartments,
@@ -127,7 +124,6 @@ export function ScheduleProvider({ children }) {
       const allDepts = [...new Set(courses.map(c => c.department).filter(Boolean))]
       const allCycles = [...new Set(courses.map(c => c.cycle).filter(Boolean))]
 
-      // Inicializar secciones filtradas por escuela
       const initialSections = {}
       courses.forEach(course => {
         const courseSchedules = schedules.filter(s => s.course_name === course.name)
