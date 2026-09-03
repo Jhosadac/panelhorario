@@ -18,7 +18,7 @@ function Sidebar() {
 
   const [isOpen, setIsOpen] = useState(true)
 
-  // Ciclos disponibles
+  // Ciclos disponibles según las escuelas seleccionadas
   const availableCycles = useMemo(() => {
     let filtered = courses
     if (tempDepartments.length > 0) {
@@ -28,7 +28,7 @@ function Sidebar() {
     return Array.from(unique).sort()
   }, [courses, tempDepartments])
 
-  // Cursos filtrados (con clave compuesta)
+  // Cursos filtrados según escuelas y ciclos seleccionados
   const filteredCourses = useMemo(() => {
     let result = courses
     if (tempDepartments.length > 0) {
@@ -43,7 +43,7 @@ function Sidebar() {
     }))
   }, [courses, tempDepartments, tempCycles])
 
-  // Obtener secciones de un curso (según su departamento)
+  // Obtener secciones de un curso según su departamento
   const getSectionsForCourse = useCallback((course) => {
     const courseSchedules = schedules.filter(s => s.course_name === course.name)
     const allSections = [...new Set(courseSchedules.map(s => s.class).filter(Boolean))]
@@ -85,16 +85,17 @@ function Sidebar() {
     dispatch({ type: 'SET_TEMP_SECTIONS', payload: newSections })
   }, [courses, tempSections, getSectionsForCourse, dispatch])
 
-  // Manejar escuela
+  // Manejar clic en escuela: toggle (seleccionar/deseleccionar)
   const handleDepartmentClick = (dept) => {
     let newDepts
-    if (tempDepartments.includes(dept) && tempDepartments.length === 1) {
-      newDepts = []
+    if (tempDepartments.includes(dept)) {
+      newDepts = tempDepartments.filter(d => d !== dept)
     } else {
-      newDepts = [dept]
+      newDepts = [...tempDepartments, dept]
     }
     dispatch({ type: 'SET_TEMP_DEPARTMENTS', payload: newDepts })
 
+    // Filtrar ciclos seleccionados para que solo queden los disponibles con la nueva selección de escuelas
     const filteredCycles = availableCycles.filter(c =>
       courses.some(course => course.cycle === c && newDepts.includes(course.department))
     )
@@ -102,7 +103,7 @@ function Sidebar() {
     updateSectionsForCurrentFilters(newDepts, filteredCycles)
   }
 
-  // Toggle ciclo
+  // Toggle de ciclo
   const toggleCycle = (cycle) => {
     let newCycles
     if (tempCycles.includes(cycle)) {
@@ -159,7 +160,7 @@ function Sidebar() {
     return COLORS[Math.abs(hash) % COLORS.length]
   }
 
-  // Contador
+  // Contador: marcadas vs totales (solo para cursos visibles)
   const selectedCount = useMemo(() => {
     let marked = 0
     let total = 0
@@ -190,7 +191,7 @@ function Sidebar() {
         shadow-lg
       `}>
         <div className="flex-1 overflow-y-auto p-4 space-y-5">
-          {/* Escuela */}
+          {/* Escuela (toggle multiple) */}
           <div className="sidebar-section">
             <label className="sidebar-label">🏫 Escuela</label>
             <div className="flex gap-2">
@@ -212,9 +213,12 @@ function Sidebar() {
             {tempDepartments.length === 0 && (
               <div className="text-xs text-[#F2545B] mt-1">Ninguna escuela seleccionada</div>
             )}
+            {tempDepartments.length === 2 && (
+              <div className="text-xs text-[#4CAF50] mt-1">✅ Ambas escuelas seleccionadas</div>
+            )}
           </div>
 
-          {/* Ciclos */}
+          {/* Ciclos (múltiple selección) */}
           <div className="sidebar-section">
             <label className="sidebar-label">📋 Ciclos</label>
             <div className="flex flex-wrap gap-1.5">
@@ -300,7 +304,7 @@ function Sidebar() {
             </div>
           </div>
 
-          {/* Aplicar filtros */}
+          {/* Botón Aplicar */}
           <div className="sidebar-section">
             <button
               onClick={applyFilters}
@@ -341,7 +345,7 @@ function Sidebar() {
               <span className="font-medium text-[#333333]">Secciones marcadas:</span> {selectedCount.marked} de {selectedCount.total}
             </div>
             <div className="text-xs text-[#9E9E9E] mt-1">
-              <span className="font-medium text-[#333333]">Escuela:</span> {tempDepartments.join(', ') || 'Ninguna'}
+              <span className="font-medium text-[#333333]">Escuela(s):</span> {tempDepartments.join(', ') || 'Ninguna'}
             </div>
             <div className="text-xs text-[#9E9E9E]">
               <span className="font-medium text-[#333333]">Ciclos:</span> {tempCycles.length > 0 ? tempCycles.join(', ') : 'Todos'}
