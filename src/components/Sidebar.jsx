@@ -43,24 +43,22 @@ function Sidebar() {
     }))
   }, [courses, tempDepartments, tempCycles])
 
-  // Obtener secciones de un curso según su departamento
-  const getSectionsForCourse = useCallback((course) => {
+  // Obtener todas las secciones posibles de un curso (según escuela)
+  const getPossibleSectionsForCourse = useCallback((course) => {
     const courseSchedules = schedules.filter(s => s.course_name === course.name)
     const allSections = [...new Set(courseSchedules.map(s => s.class).filter(Boolean))]
-    return filterSectionsByDepartment(allSections, course.department)
+    if (course.department === 'EPIES') {
+      return allSections.filter(sec => EPIES_SECTIONS.includes(sec))
+    } else if (course.department === 'EPIEC') {
+      return allSections.filter(sec => !EPIES_SECTIONS.includes(sec))
+    }
+    return allSections
   }, [schedules])
 
-  const filterSectionsByDepartment = (sections, department) => {
-    if (department === 'EPIES') {
-      return sections.filter(sec => EPIES_SECTIONS.includes(sec))
-    } else if (department === 'EPIEC') {
-      return sections.filter(sec => !EPIES_SECTIONS.includes(sec))
-    }
-    return sections
-  }
-
-  // Actualizar secciones según filtros
-  const updateSectionsForCurrentFilters = useCallback((depts, cycles) => {
+  // Función para limpiar secciones que ya no pertenecen a los filtros actuales
+  const cleanSections = useCallback((currentSections, depts, cycles) => {
+    // Construir conjunto de claves válidas según los filtros
+    const validKeys = new Set()
     let filtered = courses
     if (depts.length > 0) {
       filtered = filtered.filter(c => depts.includes(c.department))
@@ -68,24 +66,21 @@ function Sidebar() {
     if (cycles.length > 0) {
       filtered = filtered.filter(c => cycles.includes(c.cycle))
     }
-    const newSections = { ...tempSections }
-    // Eliminar claves de cursos que ya no están en filtered
+    filtered.forEach(course => {
+      validKeys.add(getSectionKey(course.name, course.department))
+    })
+
+    // Eliminar del objeto las claves que ya no son válidas
+    const newSections = { ...currentSections }
     Object.keys(newSections).forEach(key => {
-      const [courseName, dept] = key.split('|')
-      if (!filtered.some(c => c.name === courseName && c.department === dept)) {
+      if (!validKeys.has(key)) {
         delete newSections[key]
       }
     })
-    // Agregar/marcar secciones de los cursos filtrados
-    filtered.forEach(course => {
-      const key = getSectionKey(course.name, course.department)
-      const sections = getSectionsForCourse(course)
-      newSections[key] = sections
-    })
-    dispatch({ type: 'SET_TEMP_SECTIONS', payload: newSections })
-  }, [courses, tempSections, getSectionsForCourse, dispatch])
+    return newSections
+  }, [courses])
 
-  // Manejar clic en escuela: toggle (seleccionar/deseleccionar)
+  // Manejar clic en escuela: toggle
   const handleDepartmentClick = (dept) => {
     let newDepts
     if (tempDepartments.includes(dept)) {
@@ -95,12 +90,15 @@ function Sidebar() {
     }
     dispatch({ type: 'SET_TEMP_DEPARTMENTS', payload: newDepts })
 
-    // Filtrar ciclos seleccionados para que solo queden los disponibles con la nueva selección de escuelas
+    // Filtrar ciclos seleccionados para que solo queden los disponibles
     const filteredCycles = availableCycles.filter(c =>
       courses.some(course => course.cycle === c && newDepts.includes(course.department))
     )
     dispatch({ type: 'SET_TEMP_CYCLES', payload: filteredCycles })
-    updateSectionsForCurrentFilters(newDepts, filteredCycles)
+
+    // Limpiar secciones que ya no corresponden
+    const cleaned = cleanSections(tempSections, newDepts, filteredCycles)
+    dispatch({ type: 'SET_TEMP_SECTIONS', payload: cleaned })
   }
 
   // Toggle de ciclo
@@ -112,19 +110,22 @@ function Sidebar() {
       newCycles = [...tempCycles, cycle]
     }
     dispatch({ type: 'SET_TEMP_CYCLES', payload: newCycles })
-    updateSectionsForCurrentFilters(tempDepartments, newCycles)
+
+    // Limpiar secciones que ya no corresponden
+    const cleaned = cleanSections(tempSections, tempDepartments, newCycles)
+    dispatch({ type: 'SET_TEMP_SECTIONS', payload: cleaned })
   }
 
-  // Toggle todas las secciones de un curso
+  // Toggle todas las secciones de un curso (marcar/desmarcar todas)
   const toggleCourse = (course) => {
     const key = getSectionKey(course.name, course.department)
-    const sections = getSectionsForCourse(course)
+    const possible = getPossibleSectionsForCourse(course)
     const current = tempSections[key] || []
     let newSelected
-    if (current.length === sections.length && sections.length > 0) {
+    if (current.length === possible.length && possible.length > 0) {
       newSelected = []
     } else {
-      newSelected = [...sections]
+      newSelected = [...possible]
     }
     dispatch({
       type: 'SET_TEMP_SECTIONS',
@@ -160,19 +161,19 @@ function Sidebar() {
     return COLORS[Math.abs(hash) % COLORS.length]
   }
 
-  // Contador: marcadas vs totales (solo para cursos visibles)
+  // Contador: marcadas vs totales posibles (solo para cursos visibles)
   const selectedCount = useMemo(() => {
     let marked = 0
     let total = 0
     filteredCourses.forEach(course => {
       const key = course._key
-      const sections = getSectionsForCourse(course)
+      const possible = getPossibleSectionsForCourse(course)
       const selected = tempSections[key] || []
       marked += selected.length
-      total += sections.length
+      total += possible.length
     })
     return { marked, total }
-  }, [filteredCourses, tempSections, getSectionsForCourse])
+  }, [filteredCourses, tempSections, getPossibleSectionsForCourse])
 
   return (
     <>
@@ -253,9 +254,9 @@ function Sidebar() {
             <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
               {filteredCourses.map(course => {
                 const key = course._key
-                const sections = getSectionsForCourse(course)
+                const possible = getPossibleSectionsForCourse(course)
                 const selected = tempSections[key] || []
-                const allSelected = sections.length > 0 && selected.length === sections.length
+                const allSelected = possible.length > 0 && selected.length === possible.length
                 const color = getColor(course.id)
 
                 return (
@@ -275,12 +276,12 @@ function Sidebar() {
                         {course.code} - {course.name}
                       </span>
                       <span className="text-[10px] text-[#9E9E9E] font-mono">
-                        {sections.length}
+                        {possible.length}
                       </span>
                     </div>
-                    {sections.length > 0 && (
+                    {possible.length > 0 && (
                       <div className="ml-6 mt-1 flex flex-wrap gap-1">
-                        {sections.map(sec => (
+                        {possible.map(sec => (
                           <label key={sec} className="flex items-center gap-1 text-xs cursor-pointer">
                             <input
                               type="checkbox"
