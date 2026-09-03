@@ -11,11 +11,11 @@ const initialState = {
   schedules: [],
 
   tempDepartments: [],
-  tempSections: {},        // clave: "courseName|department"
+  tempSections: {},        // clave: "courseName|department" -> array de secciones marcadas
   tempCycles: [],
 
   activeDepartments: [],
-  activeSections: {},      // clave: "courseName|department"
+  activeSections: {},
   activeCycles: [],
 
   loading: false,
@@ -24,15 +24,6 @@ const initialState = {
 }
 
 const getSectionKey = (courseName, department) => `${courseName}|${department}`
-
-const filterSectionsByDepartment = (sections, department) => {
-  if (department === 'EPIES') {
-    return sections.filter(sec => EPIES_SECTIONS.includes(sec))
-  } else if (department === 'EPIEC') {
-    return sections.filter(sec => !EPIES_SECTIONS.includes(sec))
-  }
-  return sections
-}
 
 function scheduleReducer(state, action) {
   switch (action.type) {
@@ -59,16 +50,11 @@ function scheduleReducer(state, action) {
       return { ...state, tempCycles: action.payload }
 
     case 'APPLY_FILTERS': {
-      const filteredActiveSections = {}
-      state.courses.forEach(course => {
-        const key = getSectionKey(course.name, course.department)
-        const sections = state.tempSections[key] || []
-        filteredActiveSections[key] = filterSectionsByDepartment(sections, course.department)
-      })
+      // activeSections copia exacta de tempSections (sin filtros adicionales)
       return {
         ...state,
         activeDepartments: state.tempDepartments,
-        activeSections: filteredActiveSections,
+        activeSections: { ...state.tempSections },
         activeCycles: state.tempCycles,
       }
     }
@@ -118,20 +104,14 @@ export function ScheduleProvider({ children }) {
         payload: { courses, teachers, classrooms, schedules }
       })
 
+      // Inicializar: seleccionar todas las escuelas y todos los ciclos, pero sin secciones marcadas
       const allDepts = [...new Set(courses.map(c => c.department).filter(Boolean))]
       const allCycles = [...new Set(courses.map(c => c.cycle).filter(Boolean))]
 
-      const initialSections = {}
-      courses.forEach(course => {
-        const courseSchedules = schedules.filter(s => s.course_name === course.name)
-        const allSections = [...new Set(courseSchedules.map(s => s.class).filter(Boolean))]
-        const key = getSectionKey(course.name, course.department)
-        initialSections[key] = filterSectionsByDepartment(allSections, course.department)
-      })
-
       dispatch({ type: 'SET_TEMP_DEPARTMENTS', payload: allDepts })
       dispatch({ type: 'SET_TEMP_CYCLES', payload: allCycles })
-      dispatch({ type: 'SET_TEMP_SECTIONS', payload: initialSections })
+      // tempSections queda vacío
+      dispatch({ type: 'SET_TEMP_SECTIONS', payload: {} })
       dispatch({ type: 'APPLY_FILTERS' })
 
       await updateOccupancy(classrooms, schedules)
