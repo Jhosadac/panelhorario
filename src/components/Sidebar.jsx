@@ -18,7 +18,6 @@ function Sidebar() {
 
   const [isOpen, setIsOpen] = useState(true)
 
-  // Ciclos disponibles según las escuelas seleccionadas
   const availableCycles = useMemo(() => {
     let filtered = courses
     if (tempDepartments.length > 0) {
@@ -28,7 +27,6 @@ function Sidebar() {
     return Array.from(unique).sort()
   }, [courses, tempDepartments])
 
-  // Cursos filtrados según escuelas y ciclos seleccionados
   const filteredCourses = useMemo(() => {
     let result = courses
     if (tempDepartments.length > 0) {
@@ -43,7 +41,6 @@ function Sidebar() {
     }))
   }, [courses, tempDepartments, tempCycles])
 
-  // Obtener todas las secciones posibles de un curso (según escuela)
   const getPossibleSectionsForCourse = useCallback((course) => {
     const courseSchedules = schedules.filter(s => s.course_name === course.name)
     const allSections = [...new Set(courseSchedules.map(s => s.class).filter(Boolean))]
@@ -55,9 +52,7 @@ function Sidebar() {
     return allSections
   }, [schedules])
 
-  // Función para limpiar secciones que ya no pertenecen a los filtros actuales
   const cleanSections = useCallback((currentSections, depts, cycles) => {
-    // Construir conjunto de claves válidas según los filtros
     const validKeys = new Set()
     let filtered = courses
     if (depts.length > 0) {
@@ -70,7 +65,6 @@ function Sidebar() {
       validKeys.add(getSectionKey(course.name, course.department))
     })
 
-    // Eliminar del objeto las claves que ya no son válidas
     const newSections = { ...currentSections }
     Object.keys(newSections).forEach(key => {
       if (!validKeys.has(key)) {
@@ -80,7 +74,6 @@ function Sidebar() {
     return newSections
   }, [courses])
 
-  // Manejar clic en escuela: toggle
   const handleDepartmentClick = (dept) => {
     let newDepts
     if (tempDepartments.includes(dept)) {
@@ -90,18 +83,15 @@ function Sidebar() {
     }
     dispatch({ type: 'SET_TEMP_DEPARTMENTS', payload: newDepts })
 
-    // Filtrar ciclos seleccionados para que solo queden los disponibles
     const filteredCycles = availableCycles.filter(c =>
       courses.some(course => course.cycle === c && newDepts.includes(course.department))
     )
     dispatch({ type: 'SET_TEMP_CYCLES', payload: filteredCycles })
 
-    // Limpiar secciones que ya no corresponden
     const cleaned = cleanSections(tempSections, newDepts, filteredCycles)
     dispatch({ type: 'SET_TEMP_SECTIONS', payload: cleaned })
   }
 
-  // Toggle de ciclo
   const toggleCycle = (cycle) => {
     let newCycles
     if (tempCycles.includes(cycle)) {
@@ -111,12 +101,10 @@ function Sidebar() {
     }
     dispatch({ type: 'SET_TEMP_CYCLES', payload: newCycles })
 
-    // Limpiar secciones que ya no corresponden
     const cleaned = cleanSections(tempSections, tempDepartments, newCycles)
     dispatch({ type: 'SET_TEMP_SECTIONS', payload: cleaned })
   }
 
-  // Toggle todas las secciones de un curso (marcar/desmarcar todas)
   const toggleCourse = (course) => {
     const key = getSectionKey(course.name, course.department)
     const possible = getPossibleSectionsForCourse(course)
@@ -133,7 +121,6 @@ function Sidebar() {
     })
   }
 
-  // Toggle una sección específica
   const toggleSection = (course, section) => {
     const key = getSectionKey(course.name, course.department)
     const current = tempSections[key] || []
@@ -161,7 +148,6 @@ function Sidebar() {
     return COLORS[Math.abs(hash) % COLORS.length]
   }
 
-  // Contador: marcadas vs totales posibles (solo para cursos visibles)
   const selectedCount = useMemo(() => {
     let marked = 0
     let total = 0
@@ -192,7 +178,7 @@ function Sidebar() {
         shadow-lg
       `}>
         <div className="flex-1 overflow-y-auto p-4 space-y-5">
-          {/* Escuela (toggle multiple) */}
+          {/* Escuela*/}
           <div className="sidebar-section">
             <label className="sidebar-label">🏫 Escuela</label>
             <div className="flex gap-2">
@@ -219,7 +205,7 @@ function Sidebar() {
             )}
           </div>
 
-          {/* Ciclos (múltiple selección) */}
+          {/* Ciclos */}
           <div className="sidebar-section">
             <label className="sidebar-label">📋 Ciclos</label>
             <div className="flex flex-wrap gap-1.5">
