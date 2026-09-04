@@ -1,4 +1,3 @@
-// src/components/ClassroomOccupancy.jsx
 import React from 'react'
 import { useSchedule } from '../context/ScheduleContext'
 
