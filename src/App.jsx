@@ -11,7 +11,7 @@ function App() {
         <main className="flex-1 overflow-hidden flex flex-col">
           <div className="bg-[#6B1F1F] border-b border-[#4A1515] px-6 py-3 flex items-center justify-between shrink-0">
             <h1 className="text-lg font-semibold text-white">
-              📚 Panel de Horarios Académicos
+              Panel de Horarios Académicos
             </h1>
             <div className="text-xs text-[#E8DFB5]">
               {new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
