@@ -16,17 +16,13 @@ function ScheduleGrid() {
 
   const [tooltip, setTooltip] = useState(null)
 
-  // Obtener lista de claves de cursos activos (de activeSections)
   const activeKeys = useMemo(() => new Set(Object.keys(activeSections)), [activeSections])
 
-  // Filtrar horarios usando clave compuesta (inferir departamento de la sección)
   const filteredSchedules = useMemo(() => {
     return schedules.filter(s => {
-      // Inferir departamento a partir de la sección
       const inferredDept = EPIES_SECTIONS.includes(s.class) ? 'EPIES' : 'EPIEC'
       const key = getSectionKey(s.course_name, inferredDept)
 
-      // Verificar si el curso está activo y la sección está seleccionada
       if (!activeKeys.has(key)) return false
       const selectedSections = activeSections[key] || []
       if (!selectedSections.includes(s.class)) return false
@@ -35,7 +31,6 @@ function ScheduleGrid() {
     })
   }, [schedules, activeKeys, activeSections])
 
-  // Agrupar por día y manejar solapamientos
   const groupedByDay = useMemo(() => {
     const result = {}
     DAYS.forEach(day => {
