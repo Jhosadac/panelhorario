@@ -201,7 +201,7 @@ function Sidebar() {
               <div className="text-xs text-[#F2545B] mt-1">Ninguna escuela seleccionada</div>
             )}
             {tempDepartments.length === 2 && (
-              <div className="text-xs text-[#4CAF50] mt-1">✅ Ambas escuelas seleccionadas</div>
+              <div className="text-xs text-[#4CAF50] mt-1">Ambas escuelas seleccionadas</div>
             )}
           </div>
 
@@ -232,7 +232,7 @@ function Sidebar() {
           {/* Cursos y secciones */}
           <div className="sidebar-section">
             <div className="flex items-center justify-between mb-2">
-              <label className="sidebar-label mb-0">📚 Cursos y secciones</label>
+              <label className="sidebar-label mb-0">Cursos y secciones</label>
               <span className="text-xs text-[#9E9E9E]">
                 {selectedCount.marked} de {selectedCount.total} secciones seleccionadas
               </span>
@@ -297,14 +297,14 @@ function Sidebar() {
               onClick={applyFilters}
               className="w-full btn-primary text-center"
             >
-              ✅ Aplicar filtros
+              Aplicar filtros
             </button>
           </div>
 
           {/* Ocupación de aulas */}
           <div className="sidebar-section">
             <label className="sidebar-label flex items-center gap-2">
-              🟢 Ocupación de aulas
+              Ocupación de aulas
               <span className="text-[10px] text-[#9E9E9E] font-normal">(en tiempo real)</span>
             </label>
             <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
