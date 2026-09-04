@@ -11,7 +11,7 @@ const initialState = {
   schedules: [],
 
   tempDepartments: [],
-  tempSections: {},        // clave: "courseName|department" -> array de secciones marcadas
+  tempSections: {}, 
   tempCycles: [],
 
   activeDepartments: [],
@@ -50,7 +50,6 @@ function scheduleReducer(state, action) {
       return { ...state, tempCycles: action.payload }
 
     case 'APPLY_FILTERS': {
-      // activeSections copia exacta de tempSections (sin filtros adicionales)
       return {
         ...state,
         activeDepartments: state.tempDepartments,
@@ -104,13 +103,12 @@ export function ScheduleProvider({ children }) {
         payload: { courses, teachers, classrooms, schedules }
       })
 
-      // Inicializar: seleccionar todas las escuelas y todos los ciclos, pero sin secciones marcadas
       const allDepts = [...new Set(courses.map(c => c.department).filter(Boolean))]
       const allCycles = [...new Set(courses.map(c => c.cycle).filter(Boolean))]
 
       dispatch({ type: 'SET_TEMP_DEPARTMENTS', payload: allDepts })
       dispatch({ type: 'SET_TEMP_CYCLES', payload: allCycles })
-      // tempSections queda vacío
+      
       dispatch({ type: 'SET_TEMP_SECTIONS', payload: {} })
       dispatch({ type: 'APPLY_FILTERS' })
 
