@@ -180,7 +180,7 @@ function Sidebar() {
         <div className="flex-1 overflow-y-auto p-4 space-y-5">
           {/* Escuela*/}
           <div className="sidebar-section">
-            <label className="sidebar-label">🏫 Escuela</label>
+            <label className="sidebar-label">Escuela</label>
             <div className="flex gap-2">
               {['EPIES', 'EPIEC'].map(dept => (
                 <button
@@ -207,7 +207,7 @@ function Sidebar() {
 
           {/* Ciclos */}
           <div className="sidebar-section">
-            <label className="sidebar-label">📋 Ciclos</label>
+            <label className="sidebar-label">Ciclos</label>
             <div className="flex flex-wrap gap-1.5">
               {availableCycles.map(cycle => (
                 <button
